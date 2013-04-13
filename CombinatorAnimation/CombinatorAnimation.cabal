@@ -1,0 +1,58 @@
+name:           CombinatorAnimation
+version:        0.5.0
+cabal-version:  >= 1.2
+build-type:     Simple
+author:         Jürgen Nicklisch-Franken
+copyright:      2012-2013 Jürgen Nicklisch-Franken
+description:    Animation of combinatory logic via ConeCanvas.
+license:        GPL-2
+data-files:     
+                Icons/I.png, 
+                Icons/K.png, 
+                Icons/S.png, 
+                Icons/B.png, 
+                Icons/C.png, 
+                Icons/W.png, 
+                Icons/var.png
+stability:      provisional
+maintainer:     jnf@arcor.de
+license-file:   LICENSE
+homepage:       https://github.com/jutaro/ProjectCombinators
+
+executable CombinatorAnimation
+  hs-source-dirs:  src
+  main-is:         MainCombinatorAnimation.hs
+  build-depends:   
+                   base >= 4,
+                   Combinators,
+                   ConeCanvas,
+                   gtk,
+                   filepath,
+                   pretty,
+                   monadIO
+  ghc-options:     -rtsopts -threaded -fexcess-precision -funbox-strict-fields -Wall -fno-warn-unused-do-bind -fno-warn-name-shadowing
+  ghc-prof-options: -auto-all -prof -caf-all
+  other-modules:   
+                   CombinatorAnimation,
+                   BenchOntoCigol
+
+executable bench-cigol
+    build-depends: 
+                   base >= 4,
+                   Combinators,
+                   ConeCanvas,
+                   gtk,
+                   filepath,
+                   pretty,
+                   monadIO,
+                   criterion,
+                   parallel,
+                   transformers
+    main-is: BenchOntoCigol.hs 
+    buildable: True
+    hs-source-dirs: src 
+    other-modules: 
+                   CombinatorAnimation
+    ghc-options:   -rtsopts -threaded -fexcess-precision -funbox-strict-fields -Wall -fno-warn-unused-do-bind -fno-warn-name-shadowing
+    ghc-prof-options: -auto-all -prof -caf-all
+    
