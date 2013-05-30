@@ -49,11 +49,8 @@ gui1 =  do
     ontoCigolStateRef <- newIORef (OntoCigolState)
     _ontoCigolState <- readIORef ontoCigolStateRef
     icons     <- loadIconsCairo ".png" (dataDir </> "Icons")
-    (interface,GtkFrame da) <- initOntoPanel True standardIKS [] icons ()
     condPrefs <- loadPrefs
-    case condPrefs of
-        Just prefs -> omSetPrefs interface prefs
-        Nothing -> return ()
+    (interface,GtkFrame da) <- initOntoPanel True standardIKS [] icons () condPrefs
 
     let GtkWindow wi = window
 
