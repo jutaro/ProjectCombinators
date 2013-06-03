@@ -34,7 +34,7 @@ main = do
     ontoCigolStateRef <- newIORef (OntoCigolState)
     _ontoCigolState <- readIORef ontoCigolStateRef
     icons     <- loadIconsCairo ".png" (dataDir </> "Icons")
-    (interface,GtkFrame da) <- initOntoPanel False standardIKS [] icons ()
+    (interface,GtkFrame da) <- initOntoPanel False standardIKS [] icons () condPrefs
     condPrefs <- loadPrefs
     case condPrefs of
         Just prefs -> omSetPrefs interface prefs
