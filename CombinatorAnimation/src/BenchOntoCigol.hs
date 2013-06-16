@@ -18,7 +18,7 @@ import Combinators
 import CombinatorAnimation
 import Paths_CombinatorAnimation (getDataDir)
 
-import ConeCanvas.Frontend.GtkCairo
+import ConeCanvas.Frontend.GtkOpenGL
 import ConeCanvas.OntoModel
        (omAnimateFinishedCallback, OntoInterface(..), OntoFront(..),omSetPrefs)
 import ConeCanvas.OntoControl
@@ -45,14 +45,14 @@ main = defaultMainWith myConfig (return ()) [
 gui1 :: IO ()
 gui1 =  do
     dataDir   <- getDataDir
-    window    <- ofInitGUI GtkCairoFrontend (undefined :: EditTerm VarString)
+    icons     <- getIconNames ".png" (dataDir </> "Icons")
+    window    <- ofInitGUI GtkOpenGLFrontend (undefined :: EditTerm VarString)
     ontoCigolStateRef <- newIORef (OntoCigolState)
     _ontoCigolState <- readIORef ontoCigolStateRef
-    icons     <- loadIconsCairo ".png" (dataDir </> "Icons")
     condPrefs <- loadPrefs
-    (interface,GtkFrame da) <- initOntoPanel True standardIKS [] icons () condPrefs
+    (interface,Gtk3DFrame da) <- initOntoPanel True standardIKS [] (icons,".png",dataDir </> "Icons") () condPrefs
 
-    let GtkWindow wi = window
+    let Gtk3DWindow wi = window
 
     textEntry <- entryNew
     vbox <- vBoxNew False 0

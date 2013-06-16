@@ -21,6 +21,8 @@ import ConeCanvas.OntoControl
 import ConeCanvas.OntoModel
 --import Control.Concurrent (yield)
 import ConeCanvas.Frontend.GtkCairo
+import ConeCanvas.Frontend.GtkOpenGL
+
 
 import Control.Monad (when)
 import Data.IORef
@@ -30,15 +32,12 @@ import System.FilePath ((</>))
 main:: IO()
 main = do
     dataDir   <- getDataDir
-    window    <- ofInitGUI GtkCairoFrontend (undefined :: EditTerm VarString)
+    icons     <- getIconNames ".png" (dataDir </> "Icons")
+    window    <- ofInitGUI GtkOpenGLFrontend (undefined :: EditTerm VarString)
     ontoCigolStateRef <- newIORef (OntoCigolState)
     _ontoCigolState <- readIORef ontoCigolStateRef
-    icons     <- loadIconsCairo ".png" (dataDir </> "Icons")
-    (interface,GtkFrame da) <- initOntoPanel False standardIKS [] icons () condPrefs
     condPrefs <- loadPrefs
-    case condPrefs of
-        Just prefs -> omSetPrefs interface prefs
-        Nothing -> return ()
+    (interface,Gtk3DFrame da) <- initOntoPanel False standardIKS [] (icons,".png",dataDir </> "Icons") () condPrefs
 
     box <- vBoxNew True 2
     radioIKS <- radioButtonNewWithLabel "IKS"
@@ -107,7 +106,7 @@ main = do
     boxPackStart vbox box PackNatural 0
 
 
-    let GtkWindow wi = window
+    let Gtk3DWindow wi = window
     containerAdd wi vbox
     ofStartGUI window
 
