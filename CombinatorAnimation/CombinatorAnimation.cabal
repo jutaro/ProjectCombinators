@@ -1,5 +1,5 @@
 name:           CombinatorAnimation
-version:        0.5.0
+version:        0.6.0
 cabal-version:  >= 1.2
 build-type:     Simple
 author:         Jürgen Nicklisch-Franken
@@ -19,13 +19,14 @@ maintainer:     jnf@arcor.de
 license-file:   LICENSE
 homepage:       https://github.com/jutaro/ProjectCombinators
 
-executable CombinatorAnimation
+executable CombinatorAnimation2D
   hs-source-dirs:  src
-  main-is:         MainCombinatorAnimation.hs
+  main-is:         MainCombinatorAnimation2D.hs
   build-depends:   
                    base >= 4,
                    Combinators,
                    ConeCanvas,
+                   ConeCanvasGtkCairo,
                    gtk,
                    filepath,
                    pretty,
@@ -33,10 +34,26 @@ executable CombinatorAnimation
   ghc-options:     -rtsopts -threaded -fexcess-precision -funbox-strict-fields -Wall -fno-warn-unused-do-bind -fno-warn-name-shadowing
   ghc-prof-options: -auto-all -prof -caf-all
   other-modules:   
-                   CombinatorAnimation,
-                   BenchOntoCigol
+                   CombinatorAnimation
 
-executable bench-cigol
+executable CombinatorAnimation3D
+  hs-source-dirs:  src
+  main-is:         MainCombinatorAnimation3D.hs
+  build-depends:   
+                   base >= 4,
+                   Combinators,
+                   ConeCanvas,
+                   ConeCanvasGtkOpenGL,
+                   gtk,
+                   filepath,
+                   pretty,
+                   monadIO
+  ghc-options:     -rtsopts -threaded -fexcess-precision -funbox-strict-fields -Wall -fno-warn-unused-do-bind -fno-warn-name-shadowing
+  ghc-prof-options: -auto-all -prof -caf-all
+  other-modules:   
+                   CombinatorAnimation
+                   
+executable bench-cigol2D
     build-depends: 
                    base >= 4,
                    Combinators,
@@ -48,7 +65,28 @@ executable bench-cigol
                    criterion,
                    parallel,
                    transformers
-    main-is: BenchOntoCigol.hs 
+    main-is: BenchOntoCigol2D.hs 
+    buildable: True
+    hs-source-dirs: src 
+    other-modules: 
+                   CombinatorAnimation
+    ghc-options:   -rtsopts -threaded -fexcess-precision -funbox-strict-fields -Wall -fno-warn-unused-do-bind -fno-warn-name-shadowing
+    ghc-prof-options: -auto-all -prof -caf-all
+    
+
+executable bench-cigol3D
+    build-depends: 
+                   base >= 4,
+                   Combinators,
+                   ConeCanvas,
+                   gtk,
+                   filepath,
+                   pretty,
+                   monadIO,
+                   criterion,
+                   parallel,
+                   transformers
+    main-is: BenchOntoCigol3D.hs 
     buildable: True
     hs-source-dirs: src 
     other-modules: 
