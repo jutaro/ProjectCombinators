@@ -20,7 +20,7 @@ import Paths_CombinatorAnimation (getDataDir)
 import ConeCanvas.OntoControl
 import ConeCanvas.OntoModel
 --import Control.Concurrent (yield)
-import ConeCanvas.Frontend.GtkCairo
+--import ConeCanvas.Frontend.GtkCairo
 import ConeCanvas.Frontend.GtkOpenGL
 import ConeCanvas.Preferences
 
@@ -35,6 +35,11 @@ main = do
     dataDir   <- getDataDir
     icons     <- getIconNames ".png" (dataDir </> "Icons")
     window    <- ofInitGUI GtkOpenGLFrontend (undefined :: EditTerm VarString)
+    let Gtk3DWindow wi = window
+    set wi [windowTitle := "Combinator Animation 3D",
+             windowDefaultWidth := 800, windowDefaultHeight := 910,
+             containerBorderWidth := 1]
+
     ontoCigolStateRef <- newIORef (OntoCigolState)
     _ontoCigolState <- readIORef ontoCigolStateRef
     condPrefs <- loadPrefs
@@ -107,7 +112,6 @@ main = do
     boxPackStart vbox box PackNatural 0
 
 
-    let Gtk3DWindow wi = window
     containerAdd wi vbox
     ofStartGUI window
 

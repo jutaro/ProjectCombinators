@@ -64,7 +64,9 @@ gui1 =  do
 
     containerAdd wi vbox
 
-    _cid <- onDestroy wi mainQuit
+    _cid <- onDestroy wi $ do
+        ofQuit window
+
     stopIt <- newIORef False
     idleAdd (trace "idleFunc': " $ do
         stopNow <- readIORef stopIt

@@ -6,40 +6,34 @@ author:         Jürgen Nicklisch-Franken
 copyright:      2012-2013 Jürgen Nicklisch-Franken
 description:    Animation of combinatory logic via ConeCanvas.
 license:        GPL-2
-data-files:     
-                Icons/I.png, 
-                Icons/K.png, 
-                Icons/S.png, 
-                Icons/B.png, 
-                Icons/C.png, 
-                Icons/W.png, 
-                Icons/var.png
+data-files:
+                Icons/*.png
 stability:      provisional
 maintainer:     jnf@arcor.de
 license-file:   LICENSE
 homepage:       https://github.com/jutaro/ProjectCombinators
 
-executable CombinatorAnimation2D
-  hs-source-dirs:  src
-  main-is:         MainCombinatorAnimation2D.hs
-  build-depends:   
-                   base >= 4,
-                   Combinators,
-                   ConeCanvas,
-                   ConeCanvasGtkCairo,
-                   gtk,
-                   filepath,
-                   pretty,
-                   monadIO
-  ghc-options:     -rtsopts -threaded -fexcess-precision -funbox-strict-fields -Wall -fno-warn-unused-do-bind -fno-warn-name-shadowing
-  ghc-prof-options: -auto-all -prof -caf-all
-  other-modules:   
-                   CombinatorAnimation
+--executable CombinatorAnimation2D
+--  hs-source-dirs:  src
+--  main-is:         MainCombinatorAnimation2D.hs
+--  build-depends:
+--                   base >= 4,
+--                   Combinators,
+--                   ConeCanvas,
+--                   ConeCanvasGtkCairo,
+--                   gtk,
+--                   filepath,
+--                   pretty,
+--                   monadIO
+--  ghc-options:     -rtsopts -threaded -fexcess-precision -funbox-strict-fields -Wall -fno-warn-unused-do-bind -fno-warn-name-shadowing
+--  ghc-prof-options: -auto-all -prof -caf-all
+--  other-modules:
+--                   CombinatorAnimation
 
 executable CombinatorAnimation3D
   hs-source-dirs:  src
   main-is:         MainCombinatorAnimation3D.hs
-  build-depends:   
+  build-depends:
                    base >= 4,
                    Combinators,
                    ConeCanvas,
@@ -50,35 +44,36 @@ executable CombinatorAnimation3D
                    monadIO
   ghc-options:     -rtsopts -threaded -fexcess-precision -funbox-strict-fields -Wall -fno-warn-unused-do-bind -fno-warn-name-shadowing
   ghc-prof-options: -auto-all -prof -caf-all
-  other-modules:   
+  other-modules:
                    CombinatorAnimation
-                   
-executable bench-cigol2D
-    build-depends: 
-                   base >= 4,
-                   Combinators,
-                   ConeCanvas,
-                   gtk,
-                   filepath,
-                   pretty,
-                   monadIO,
-                   criterion,
-                   parallel,
-                   transformers
-    main-is: BenchOntoCigol2D.hs 
-    buildable: True
-    hs-source-dirs: src 
-    other-modules: 
-                   CombinatorAnimation
-    ghc-options:   -rtsopts -threaded -fexcess-precision -funbox-strict-fields -Wall -fno-warn-unused-do-bind -fno-warn-name-shadowing
-    ghc-prof-options: -auto-all -prof -caf-all
-    
+
+--executable bench-cigol2D
+--    build-depends:
+--                   base >= 4,
+--                   Combinators,
+--                   ConeCanvas,
+--                   gtk,
+--                   filepath,
+--                   pretty,
+--                   monadIO,
+--                   criterion,
+--                   parallel,
+--                   transformers
+--    main-is: BenchOntoCigol2D.hs
+--    buildable: True
+--    hs-source-dirs: src
+--    other-modules:
+--                   CombinatorAnimation
+--    ghc-options:   -rtsopts -threaded -fexcess-precision -funbox-strict-fields -Wall -fno-warn-unused-do-bind -fno-warn-name-shadowing
+--    ghc-prof-options: -auto-all -prof -caf-all
+
 
 executable bench-cigol3D
-    build-depends: 
+    build-depends:
                    base >= 4,
                    Combinators,
                    ConeCanvas,
+                   ConeCanvasGtkOpenGL,
                    gtk,
                    filepath,
                    pretty,
@@ -86,11 +81,11 @@ executable bench-cigol3D
                    criterion,
                    parallel,
                    transformers
-    main-is: BenchOntoCigol3D.hs 
+    main-is: BenchOntoCigol3D.hs
     buildable: True
-    hs-source-dirs: src 
-    other-modules: 
+    hs-source-dirs: src
+    other-modules:
                    CombinatorAnimation
     ghc-options:   -rtsopts -threaded -fexcess-precision -funbox-strict-fields -Wall -fno-warn-unused-do-bind -fno-warn-name-shadowing
     ghc-prof-options: -auto-all -prof -caf-all
-    
+
