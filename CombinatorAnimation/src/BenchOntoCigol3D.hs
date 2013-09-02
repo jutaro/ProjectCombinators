@@ -20,9 +20,9 @@ import Paths_CombinatorAnimation (getDataDir)
 
 import ConeCanvas.Frontend.GtkOpenGL
 import ConeCanvas.OntoModel
-       (omAnimateFinishedCallback, OntoInterface(..), OntoFront(..),omSetPrefs)
-import ConeCanvas.OntoControl
+import ConeCanvas.OntoControlTypes
 import ConeCanvas.Preferences
+import ConeCanvas.OntoControl (initOntoPanel, getIconNames)
 
 
 import Criterion.Config

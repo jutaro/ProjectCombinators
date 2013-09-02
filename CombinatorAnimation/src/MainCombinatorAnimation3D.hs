@@ -19,8 +19,7 @@ import Paths_CombinatorAnimation (getDataDir)
 
 import ConeCanvas.OntoControl
 import ConeCanvas.OntoModel
---import Control.Concurrent (yield)
---import ConeCanvas.Frontend.GtkCairo
+import ConeCanvas.OntoControlTypes
 import ConeCanvas.Frontend.GtkOpenGL
 import ConeCanvas.Preferences
 
