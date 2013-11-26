@@ -1,103 +1,67 @@
-name:           Combinators
-version:        0.5.0
-cabal-version:  >= 1.2
-build-type:     Simple
-license:        GPL-2
-license-file:   LICENSE
-synopsis:       Combinatory logic workbench
-author:         Jürgen Nicklisch-Franken
-maintainer:     Jürgen Nicklisch-Franken
-homepage:       https://github.com/jutaro/cigolP
-description:    Combinatory logic interpreter inspired by Katarin Bimbos book.
-copyright:      All rights reserved, Jürgen Nicklisch-Franken
-stability:      provisional
-
-executable cigol
-    build-depends: 
-                   base >= 4, 
-                   parsec -any,
-                   pretty -any, 
-                   QuickCheck -any, 
-                   HUnit -any, 
-                   test-framework,
-                   test-framework-quickcheck2,
-                   test-framework-hunit
-    main-is: MainCombinators.hs
-    buildable: True 
-    hs-source-dirs: src 
-    other-modules: 
-                   Combinators.Properties Combinators
-                   Combinators.Language
-                   Combinators.Lambda,
-                   Combinators.Basis
-    ghc-options:   -rtsopts -threaded -fexcess-precision -funbox-strict-fields -Wall -fno-warn-unused-do-bind -fno-warn-name-shadowing
+name: Combinators
+version: 0.5.0
+cabal-version: >=1.2
+build-type: Simple
+license: GPL-2
+license-file: LICENSE
+copyright: All rights reserved, Jürgen Nicklisch-Franken
+maintainer: Jürgen Nicklisch-Franken
+stability: provisional
+homepage: https://github.com/jutaro/cigolP
+synopsis: Combinatory logic workbench
+description: Combinatory logic interpreter inspired by Katarin Bimbos book.
+author: Jürgen Nicklisch-Franken
+data-dir: ""
+ 
+library
+    build-depends: base >=4, parsec -any, pretty -any, QuickCheck -any,
+                   HUnit -any, test-framework -any, test-framework-quickcheck2 -any,
+                   test-framework-hunit -any
+    exposed-modules: Combinators
+    exposed: True
+    buildable: True
+    hs-source-dirs: src
+    other-modules: Variable Combinators.Properties Combinators.Language
+                   Combinators.Lambda Combinators.Basis
     ghc-prof-options: -auto-all -prof -caf-all
-    extensions:    CPP
-
-library 
-  build-depends:   base >= 4, 
-                   parsec -any, 
-                   pretty -any,
-                   QuickCheck -any, 
-                   HUnit -any, 
-                   test-framework,
-                   test-framework-quickcheck2,
-                   test-framework-hunit
-                   
-  hs-source-dirs:  src
-  ghc-options:     -rtsopts -threaded -fexcess-precision -funbox-strict-fields -Wall -fno-warn-unused-do-bind -fno-warn-name-shadowing
-  ghc-prof-options: -auto-all -prof -caf-all
-  exposed-modules: Combinators
-  other-modules: 
-                   Combinators.Properties
-                   Combinators.Language
-                   Combinators.Lambda,
-                   Combinators.Basis
-
-
+    ghc-options: -rtsopts -threaded -fexcess-precision -funbox-strict-fields -Wall -fno-warn-unused-do-bind -fno-warn-name-shadowing -O2
+ 
+executable cigol
+    build-depends: base >=4, parsec -any, pretty -any, QuickCheck -any,
+                   HUnit -any, test-framework -any, test-framework-quickcheck2 -any,
+                   test-framework-hunit -any
+    main-is: MainCombinators.hs
+    buildable: True
+    extensions: CPP
+    hs-source-dirs: src
+    other-modules: Variable Combinators.Properties Combinators
+                   Combinators.Language Combinators.Lambda Combinators.Basis
+    ghc-prof-options: -auto-all -prof -caf-all
+    ghc-options: -rtsopts -threaded -fexcess-precision -funbox-strict-fields -Wall -fno-warn-unused-do-bind -fno-warn-name-shadowing -O2
+ 
+executable bench-combinators
+    build-depends: base -any, parsec -any, pretty -any,
+                   QuickCheck -any, HUnit -any, test-framework -any,
+                   test-framework-quickcheck2 -any, test-framework-hunit -any,
+                   criterion -any, parallel -any
+    main-is: BenchCigol.hs
+    buildable: True
+    extensions: CPP
+    hs-source-dirs: src
+    other-modules: Variable Combinators.Properties Combinators
+                   Combinators.Language Combinators.Lambda Combinators.Basis
+    ghc-prof-options: -auto-all -prof -caf-all
+    ghc-options: -rtsopts -threaded -fexcess-precision -funbox-strict-fields -Wall -fno-warn-unused-do-bind -fno-warn-name-shadowing -O3
+ 
 test-suite test-combinators
-    build-depends:   
-                   base -any, 
-                   parsec -any, 
-                   pretty -any,
-                   QuickCheck -any, 
-                   HUnit -any, 
-                   test-framework,
-                   test-framework-quickcheck2,
-                   test-framework-hunit
+    build-depends: base -any, parsec -any, pretty -any,
+                   QuickCheck -any, HUnit -any, test-framework -any,
+                   test-framework-quickcheck2 -any, test-framework-hunit -any
     type: exitcode-stdio-1.0
     main-is: MainTestCombinators.hs
     buildable: True
     hs-source-dirs: src
-    other-modules: 
-                   Combinators Combinators.Language,
-                   Combinators.Lambda,
-                   Combinators.Basis,
-                   Combinators.Properties
-    ghc-options:     -rtsopts -threaded -fexcess-precision -funbox-strict-fields -Wall -fno-warn-unused-do-bind -fno-warn-name-shadowing
+    other-modules: Combinators Combinators.Language Combinators.Lambda
+                   Combinators.Basis Combinators.Properties
     ghc-prof-options: -auto-all -prof -caf-all
-
-executable bench-combinators
-    build-depends: 
-                   base -any,
-                   parsec -any,
-                   pretty -any,
-                   QuickCheck -any, 
-                   HUnit -any, 
-                   test-framework,
-                   test-framework-quickcheck2,
-                   test-framework-hunit,
-                   criterion,
-                   parallel
-    main-is: BenchCigol.hs 
-    buildable: True
-    hs-source-dirs: src 
-    other-modules: 
-                   Combinators.Properties Combinators
-                   Combinators.Language
-                   Combinators.Lambda,
-                   Combinators.Basis
-    ghc-options:   -rtsopts -threaded -fexcess-precision -funbox-strict-fields -Wall -fno-warn-unused-do-bind -fno-warn-name-shadowing -O3
-    ghc-prof-options: -auto-all -prof -caf-all
-    extensions:    CPP
-    
+    ghc-options: -rtsopts -threaded -fexcess-precision -funbox-strict-fields -Wall -fno-warn-unused-do-bind -fno-warn-name-shadowing -O2

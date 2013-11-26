@@ -21,7 +21,11 @@ import Test.Framework
 
 
 main :: IO ()
-main = defaultMain testCombinators
-    
+main = defaultMain $
+            testCombinators ++
+            testLambda
+
 testCombinators :: [Test]
 testCombinators = testLanguage ++ testProperties ++ testBasis
+
+

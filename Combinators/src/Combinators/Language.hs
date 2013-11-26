@@ -10,7 +10,7 @@
 --
 -----------------------------------------------------------------------------
 
-module Combinators.Language ( 
+module Combinators.Language (
 -----------------------------------------------------------------------------
 -- * Basic types
     Term(..),
@@ -84,6 +84,8 @@ module Combinators.Language (
     testLanguage
 
  ) where
+
+import Variable
 
 import Data.List (nub)
 import Data.Maybe (fromJust, isJust)
@@ -162,7 +164,7 @@ primArity = length . combVars
 
 spine :: (Basis basis v) => Term basis v -> [Term basis v]
 spine = reverse . spine'
-  where 
+  where
     spine' (a :@ b) = b : spine' a
     spine' t' = [t']
 
@@ -201,37 +203,6 @@ instance Variable v => Basis IKS v where
 
 -----------------------------------------------------------------------------
 -- * Variables
-
--- | A variable can be
---
--- * printed
--- * parsed
--- * instantiated from a string representation
---
--- * compared for equality
-
-class (Show v, Eq v) => Variable v where
-    varPp     :: v -> String
-        -- ^ needs to start with lower case character
-    varParse  :: Parser v
-    varString :: VarString -> v -- Fixme with state
-    varGen    :: Int -> [v]
-
--- | The representation of variables as strings
-type VarString = String
-
-instance Variable VarString where
-    varPp = id
-    varParse = do
-            start <- PA.lower
-            rest <- PA.many (PA.noneOf " ()\t\n\r\f\v")
-            return (start:rest)
-        PA.<?> "varParse for SimpleVar"
-    varString = id
-    varGen i = map (\i' -> "v_" ++ show i') [1 .. i]
-
-instance Arbitrary VarString where
-    arbitrary = elements ["u","v","w","x","y","z"]
 -----------------------------------------------------------------------------
 -- * Priniting and parsing
 
@@ -274,7 +245,7 @@ parseErr ::  Basis b v => String -> Either String (Term b v)
 parseErr str = case parse' str of
                 Left err    -> Left (show err)
                 Right term  -> Right term
-                                
+
 
 -- example
 testParse :: Assertion
@@ -298,8 +269,7 @@ parseComb = do
                 _ -> PA.unexpected $ "unknown primitive combinator: " ++ start:rest
     PA.<?> "parseComb"
 
-
-parseVar = liftM Var varParse 
+parseVar = liftM Var varParse
 
 parsePrim = parseVar PA.<|> parseComb PA.<?> "parsePrim"
 
@@ -315,8 +285,8 @@ parseLeft = do
     t <- parseTerm Nothing
     PA.spaces
     PA.char ')'
-    return t 
-    
+    return t
+
 parseTerm' Nothing =
     do
         t <- parseLeft
@@ -452,17 +422,17 @@ oneStepHeadReduction term =
         Just (comb,args) ->  let replaced = foldr (\ (var,arg) term' -> substitute var arg term')
                                                     (combReduct comb)
                                             (zip (combVars comb) args)
-                            in Left (if length args == primArity comb 
-                                        then replaced 
+                            in Left (if length args == primArity comb
+                                        then replaced
                                         else foldl (:@) replaced (drop (primArity comb) args))
         Nothing -> Right term
 
 -- examples
 testOneStepHeadReduction :: Assertion
-testOneStepHeadReduction = 
+testOneStepHeadReduction =
     Left (Var "x" :@ Var "y") @=? oneStepHeadReduction (Const iIKS :@ Var "x" :@ Var "y")
 testOneStepHeadReduction2 :: Assertion
-testOneStepHeadReduction2 = 
+testOneStepHeadReduction2 =
      Left (((Var "a" :@ Var "c") :@ (Var "b" :@ Var "c")) :@ Const kIKS) @=?
      oneStepHeadReduction (Const sIKS :@ Var "a" :@ Var "b" :@ Var "c" :@ Const kIKS)
 
@@ -477,7 +447,7 @@ weakHeadReduction t =
 
 -- example
 testWeakHeadReduction :: Assertion
-testWeakHeadReduction = 
+testWeakHeadReduction =
     Var "x" @=? weakHeadReduction (Const sIKS :@ Const kIKS :@ Const kIKS :@ Var "x")
 
 
@@ -494,7 +464,7 @@ data TermZipper basis v = TermZipper
         --
         --
   }  deriving (Eq,Show)
- 
+
 -- | Construct a 'TermZipper' from a 'Term' with the root as selected element.
 constrZipper :: Term basis v -> TermZipper basis v
 constrZipper term = TermZipper
@@ -508,7 +478,7 @@ zipTerm = zipSelected . zipRoot
 
 -- example
 testZipTerm :: Assertion
-testZipTerm = 
+testZipTerm =
     term @=? zipTerm (constrZipper term)
   where
     term = parseIKS "S K K x"
@@ -590,13 +560,13 @@ zipDownRight' zipper = case zipSelected zipper of
 
 -- examples
 testZipMove1 :: Assertion
-testZipMove1 = 
+testZipMove1 =
     term @=? (zipTerm . fromJust . zipUp . fromJust . zipDownLeft . constrZipper) term
   where
     term = parseIKS "S K K x"
-    
+
 testZipMove2 :: Assertion
-testZipMove2 = 
+testZipMove2 =
     term @=? (zipTerm . fromJust . zipUp .  fromJust . zipUp .  fromJust .
                 zipDownLeft .  fromJust . zipDownRight . constrZipper) term
   where
@@ -613,7 +583,7 @@ zipIsRoot term | null (zipAnchestors term) = True
 
 -- examples
 testZipRoot :: Assertion
-testZipRoot = 
+testZipRoot =
     term @=? (zipSelected . zipRoot . fromJust . zipDownRight .
             fromJust . zipDownLeft . fromJust . zipDownLeft . constrZipper) term
   where
@@ -640,7 +610,7 @@ zipEnum zipper =  zipEnum' [] (Just (zipRoot zipper))
             accu''  = zipEnum' accu' (zipDownLeft zipper')
         in zipEnum' accu'' (zipDownRight zipper')
     zipEnum' accu Nothing = accu
-    
+
 -- example
 --  (map pp . map zipSelected . zipEnum . constrZipper) (parseIKS "S (K x) (K x)")
 
@@ -668,15 +638,15 @@ prop_upDown2 zip' = case zipAnchestors zip' of
                     Left _ : _  -> zip' == (fromJust . zipDownRight . fromJust . zipUp) zip'
                     Right _ : _ -> zip' == (fromJust . zipDownLeft . fromJust . zipUp) zip'
 
--- | Makes a path from the position in the TermZipper from cigol:Combinators/Language module, 
+-- | Makes a path from the position in the TermZipper from cigol:Combinators/Language module,
 -- according to the path concept in the OntoZipper implementation.
 -- zipperGetPath from root -> []
 -- zipperGetPath (x (y z) !v!) -> [2]
 -- zipperGetPath (x (y !z!) v) -> [1,1]
- 
+
 zipperGetPath :: Basis basis v => TermZipper basis v -> [Int]
 zipperGetPath z = reverse (zipperGetPath' [] (reverse (zipAnchestors z)))
-  where  
+  where
     zipperGetPath' accu [] = accu
     zipperGetPath' accu (Left term: rest)   = zipperGetPath' (spineLength term:accu) rest
     zipperGetPath' accu (Right _term: [])   = 0:accu
@@ -726,8 +696,8 @@ oneStepReduction strategy term =
     let zipper = constrZipper term
     in case applyStrategy strategy zipper of
             Just (zipper',(comb,args)) -> Left (zipTerm (applyCombinator (zipper',(comb,args))))
-            Nothing -> Right term    
-    
+            Nothing -> Right term
+
 -- | A one step reduction, which applies a 'Strategy' and takes a 'TermZipper'
 -- and returns a 'TermZipper'.
 --
@@ -741,7 +711,7 @@ oneStepReduction' strategy zipper = {-trace ("reduceStep: " ++ pp (zipSelected z
         Just (zipper',(comb,args)) -> Left (applyCombinator (zipper',(comb,args)))
         Nothing -> Right zipper
 
--- | Apply the Combinator comb on the term list 
+-- | Apply the Combinator comb on the term list
 applyCombinator :: Basis basis v =>
                 (TermZipper basis v, (Combinator basis v, [Term basis v]))
                 -> TermZipper basis v
@@ -782,61 +752,61 @@ strReduction = pp . normalOrderReduction . parseIKS
 
 -- example
 testReduction1 :: Assertion
-testReduction1 = 
+testReduction1 =
     parseIKS "v" @=? (normalOrderReduction . parseIKS) "S K (K x y) (I v)"
 
 testReduction2 :: Assertion
-testReduction2 = 
+testReduction2 =
     parseIKS "x" @=? (normalOrderReduction . parseIKS) "S(S(K S)(S(K K)K))(K(S(K K))) x y"
 
 testReduction3 :: Assertion
-testReduction3 = 
+testReduction3 =
     parseIKS "x z(y z)" @=? (normalOrderReduction . parseIKS)
                             "S(S(K S)(S(K(S(K S)))(S(K(S(K K)))S)))(K(K(S K K))) x y z"
 testReduction4 :: Assertion
-testReduction4 = 
+testReduction4 =
     parseIKS "K (x y)" @=? (normalOrderReduction . parseIKS) "S (K K) x y"
 
 testReduction5 :: Assertion
-testReduction5 = 
+testReduction5 =
     parseIKS "x y" @=? (normalOrderReduction . parseIKS) "S(S(K S)(S(K K)(S(K S)K)))(K K) x y z"
 
 testReduction6 :: Assertion
-testReduction6 = 
+testReduction6 =
     parseIKS "x z" @=? (normalOrderReduction . parseIKS) "S(K S)(S(K K)) x y z"
 
 testReduction7 :: Assertion
-testReduction7 = 
+testReduction7 =
     parseIKS "x z" @=? (normalOrderReduction . parseIKS)
                             "S(K K)(S(S(K S)(S(K K)(S K K)))(K(S K K))) x y z"
 
 testReduction8 :: Assertion
-testReduction8 = 
+testReduction8 =
     parseIKS "x u (z u) (y u (z u))" @=? (normalOrderReduction . parseIKS)
                             "S(K(S(K S)))(S(K S)(S(K S))) x y z u"
 
 testReduction9 :: Assertion
-testReduction9 = 
+testReduction9 =
     parseIKS "x u (z u) (y u (z u))" @=? (normalOrderReduction . parseIKS)
                             "S(S(K S)(S(K K)(S(K S)(S(K(S(K S)))S))))(K S) x y z u"
 
 testReduction10 :: Assertion
-testReduction10 = 
+testReduction10 =
     parseIKS "x" @=? (normalOrderReduction . parseIKS)
                            "S K K x"
 
 testReduction11 :: Assertion
-testReduction11 = 
+testReduction11 =
     parseIKS "x y" @=? (normalOrderReduction . parseIKS)
                            "S(S(K S)K)(K(S K K)) x y"
-                           
+
 testReduction12 :: Assertion
-testReduction12 = 
+testReduction12 =
     parseIKS "x y" @=? (normalOrderReduction . parseIKS)
                            "S(S(K S)K)(K I) x y"
 
 testReduction13 :: Assertion
-testReduction13 = 
+testReduction13 =
     parseIKS "x z" @=? (normalOrderReduction . parseIKS)
                            "S(K S)(S(K K)) x y z"
 
