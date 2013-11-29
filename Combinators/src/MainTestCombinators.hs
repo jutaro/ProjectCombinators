@@ -16,7 +16,11 @@ module Main (
     main
 ) where
 
-import Combinators
+import Combinators.CombinatorTest
+import Combinators.LambdaTest
+import Combinators.CombinatorBasisTest
+import Combinators.PropertiesTest
+
 import Test.Framework
 
 

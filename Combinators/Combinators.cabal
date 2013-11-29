@@ -9,7 +9,7 @@ maintainer: Jürgen Nicklisch-Franken
 stability: provisional
 homepage: https://github.com/jutaro/cigolP
 synopsis: Combinatory logic workbench
-description: Combinatory logic interpreter inspired by Katarin Bimbos book.
+description: Combinatory logic and lambda calculus interpreter.
 author: Jürgen Nicklisch-Franken
 data-dir: ""
  
@@ -21,12 +21,15 @@ library
     exposed: True
     buildable: True
     hs-source-dirs: src
-    other-modules: Variable Combinators.Properties Combinators.Language
-                   Combinators.Lambda Combinators.Basis
+    other-modules: Combinators.LambdaTest Combinators.PropertiesTest
+                   Combinators.CombinatorBasisTest Combinators.CombinatorTest
+                   Combinators.VariableTests Combinators.Variable Combinators.Term
+                   Combinators.Combinator Combinators.CombinatorBasis
+                   Combinators.Lambda Combinators.Properties
     ghc-prof-options: -auto-all -prof -caf-all
     ghc-options: -rtsopts -threaded -fexcess-precision -funbox-strict-fields -Wall -fno-warn-unused-do-bind -fno-warn-name-shadowing -O2
  
-executable cigol
+executable combinators
     build-depends: base >=4, parsec -any, pretty -any, QuickCheck -any,
                    HUnit -any, test-framework -any, test-framework-quickcheck2 -any,
                    test-framework-hunit -any
@@ -34,8 +37,11 @@ executable cigol
     buildable: True
     extensions: CPP
     hs-source-dirs: src
-    other-modules: Variable Combinators.Properties Combinators
-                   Combinators.Language Combinators.Lambda Combinators.Basis
+    other-modules: Combinators.LambdaTest Combinators.PropertiesTest
+                   Combinators.CombinatorBasisTest Combinators.CombinatorTest
+                   Combinators.VariableTests Combinators.Variable Combinators.Term
+                   Combinators.Combinator Combinators.CombinatorBasis
+                   Combinators.Lambda Combinators.Properties
     ghc-prof-options: -auto-all -prof -caf-all
     ghc-options: -rtsopts -threaded -fexcess-precision -funbox-strict-fields -Wall -fno-warn-unused-do-bind -fno-warn-name-shadowing -O2
  
@@ -48,8 +54,11 @@ executable bench-combinators
     buildable: True
     extensions: CPP
     hs-source-dirs: src
-    other-modules: Variable Combinators.Properties Combinators
-                   Combinators.Language Combinators.Lambda Combinators.Basis
+    other-modules: Combinators.LambdaTest Combinators.PropertiesTest
+                   Combinators.CombinatorBasisTest Combinators.CombinatorTest
+                   Combinators.VariableTests Combinators.Variable Combinators.Term
+                   Combinators.Combinator Combinators.CombinatorBasis
+                   Combinators.Lambda Combinators.Properties
     ghc-prof-options: -auto-all -prof -caf-all
     ghc-options: -rtsopts -threaded -fexcess-precision -funbox-strict-fields -Wall -fno-warn-unused-do-bind -fno-warn-name-shadowing -O3
  
@@ -61,7 +70,8 @@ test-suite test-combinators
     main-is: MainTestCombinators.hs
     buildable: True
     hs-source-dirs: src
-    other-modules: Combinators Combinators.Language Combinators.Lambda
-                   Combinators.Basis Combinators.Properties
+    other-modules: Combinators.Variable Combinators.Term
+                   Combinators.Combinator Combinators.CombinatorBasis
+                   Combinators.Lambda Combinators.Properties
     ghc-prof-options: -auto-all -prof -caf-all
     ghc-options: -rtsopts -threaded -fexcess-precision -funbox-strict-fields -Wall -fno-warn-unused-do-bind -fno-warn-name-shadowing -O2

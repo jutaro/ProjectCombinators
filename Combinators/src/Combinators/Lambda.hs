@@ -14,22 +14,18 @@
 -----------------------------------------------------------------------------
 
 module Combinators.Lambda (
-    testLambda,
-    parseStringVar,
-    ppl
+    LTerm(..),
+    parseStringVarL,
+    ppl,
+    substitutel,
+    isVal
 ) where
 
-import Variable
+import Combinators.Variable
 
-import Test.QuickCheck
-       (Arbitrary(..), elements, frequency)
-import Control.Monad (liftM, liftM2)
 import Text.Parsec.String (Parser)
 import qualified Text.PrettyPrint as PP
 import qualified Text.Parsec as PA
-import Test.Framework (Test)
-import Test.Framework.Providers.QuickCheck2 (testProperty)
-import Debug.Trace (trace)
 
 -----------------------------------------------------------------------------
 -- * Basic types
@@ -87,8 +83,8 @@ parse str = case parse' str of
                 Left err    -> error (show err)
                 Right term  -> term
 
-parseStringVar :: String -> LTerm VarString
-parseStringVar = parse
+parseStringVarL :: String -> LTerm VarString
+parseStringVarL = parse
 
 --parseErr ::  Variable v => String -> Either String (LTerm v)
 --parseErr str = case parse' str of
@@ -145,18 +141,19 @@ parsePart = do
 -- | The substitution of a variable "var" with a term "replace" in the matched term
 --
 -- Returns the resulting term.
-substitute :: Variable v  => v -> LTerm v -> LTerm v -> LTerm v
-substitute var replace (LVar x) | x == var = replace
+substitutel :: Variable v  => v -> LTerm v -> LTerm v -> LTerm v
+substitutel var replace (LVar x) | x == var = replace
                                 | otherwise = LVar x
-substitute var replace (x :@: y) = substitute var replace x :@: substitute var replace y
-substitute var replace (v :.: t) | v == var = undefined -- rename v and replace
-                                 | otherwise = v :.: substitute var replace t
+substitutel var replace (x :@: y) = substitutel var replace x :@: substitutel var replace y
+substitutel var replace (v :.: t) | v == var = undefined -- rename v and replace
+                                 | otherwise = v :.: substitutel var replace t
 
 -- | Is this combinator an application
 isVal :: Variable v => LTerm v -> Bool
 isVal (_ :.: _) = True
 isVal _ = False
 
+{-
 -- | A "Left" term is returned if reduction has changed the term, else a "Right" term.
 oneStepHeadReduction :: Variable v => LTerm v -> Either (LTerm v) (LTerm v)
 oneStepHeadReduction term =
@@ -168,21 +165,6 @@ oneStepHeadReduction term =
                                         then replaced
                                         else foldl (:@) replaced (drop (primArity comb) args))
         Nothing -> Right term
+-}
 
--- ** Testing
 
-instance Arbitrary (LTerm VarString) where
-    arbitrary = frequency
-        [(8,liftM LVar (elements ["u","v","w","x","y","z"]))
-        ,(6,liftM2 (:@:) arbitrary arbitrary)
-        ,(8,liftM2 (:.:) (elements ["u","v","w","x","y","z"]) arbitrary)
-        ]
-
---  For any term: print and parse give the original term
-prop_printParse :: LTerm VarString -> Bool
-prop_printParse term = trace ("\n\n" ++ ppl term ++ "\n" ++ ppl (parseStringVar (ppl term))
-                            ++ "\n\n" ++ show term ++ "\n" ++ show (parseStringVar (ppl term))) $
-                            term == parse (ppl term)
-
-testLambda :: [Test]
-testLambda = [testProperty "prop_printParse" prop_printParse]

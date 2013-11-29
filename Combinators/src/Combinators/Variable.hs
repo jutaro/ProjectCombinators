@@ -1,5 +1,4 @@
 {-# LANGUAGE FlexibleInstances #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
 -----------------------------------------------------------------------------
 --
 -- Module      :  Variable
@@ -14,9 +13,8 @@
 --
 -----------------------------------------------------------------------------
 
-module Variable where
+module Combinators.Variable where
 
-import Test.QuickCheck (elements, Arbitrary(..))
 import Text.Parsec.String (Parser)
 import qualified Text.Parsec as PA ((<?>), noneOf, many, lower,spaces)
 
@@ -49,7 +47,6 @@ instance Variable VarString where
     varString = id
     varGen i = map (\i' -> "v_" ++ show i') [1 .. i]
 
-instance Arbitrary VarString where
-    arbitrary = elements ["u","v","w","x","y","z"]
+
 
 

@@ -13,8 +13,11 @@
 -----------------------------------------------------------------------------
 
 module Combinators (module X) where
-import Combinators.Language as X
-import Combinators.Properties as X
-import Combinators.Basis as X
+import Combinators.Variable as X
+import Combinators.Term as X
+import Combinators.Combinator as X
+import Combinators.CombinatorBasis as X
 import Combinators.Lambda as X
+import Combinators.Properties as X
+
 
