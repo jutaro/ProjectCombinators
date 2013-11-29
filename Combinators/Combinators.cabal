@@ -50,7 +50,7 @@ executable bench-combinators
                    QuickCheck -any, HUnit -any, test-framework -any,
                    test-framework-quickcheck2 -any, test-framework-hunit -any,
                    criterion -any, parallel -any
-    main-is: BenchCigol.hs
+    main-is: BenchmarkCombinators.hs
     buildable: True
     extensions: CPP
     hs-source-dirs: src
