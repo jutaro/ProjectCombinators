@@ -160,7 +160,7 @@ spine :: Term t => t -> [t]
 spine = reverse . spine'
   where
     spine' t = case decompose t of
-                Just (l,r) -> (l : spine' r)
+                Just (l,r) -> (r : spine' l)
                 Nothing -> [t]
 
 spineLength :: Term t => t -> Int
