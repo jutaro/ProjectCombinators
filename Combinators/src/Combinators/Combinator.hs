@@ -1,5 +1,5 @@
 {-# OPTIONS_GHC -fno-warn-unused-do-bind -fno-warn-orphans #-}
-{-# LANGUAGE EmptyDataDecls, MultiParamTypeClasses, FlexibleInstances #-}
+{-# LANGUAGE EmptyDataDecls, MultiParamTypeClasses, FlexibleInstances, StandaloneDeriving, GADTs #-}
 -----------------------------------------------------------------------------
 --
 -- Module      :  Combinators
@@ -48,10 +48,6 @@ module Combinators.Combinator (
     oneStepHeadReduction,
     weakHeadReduction,
 -----------------------------------------------------------------------------
--- * Term Zipper
-    zipDownLeft',
-    zipDownRight',
------------------------------------------------------------------------------
 -- * Normal order reduction
     normalOrderStrategy,
     applyStrategy,
@@ -66,7 +62,7 @@ import Combinators.Term
 
 import Data.List (nub)
 import Data.Maybe (isJust)
-import Control.Monad (liftM, mplus)
+import Control.Monad (liftM)
 
 import Text.Parsec.String (Parser)
 import qualified Text.PrettyPrint as PP
@@ -89,27 +85,19 @@ import qualified Text.Parsec as PA
 -- * How to represent variables? Do we prefer Strings or de Bruijn?
 --      we choose to parametrize on the type of variables, which is a something of class Variable
 
-data (Variable v, Basis basis v) => CTerm basis v =
-    Const ! (Combinator basis v)
-    | Var ! v
-    | ! (CTerm basis v) :@ ! (CTerm basis v)
+data CTerm basis v where
+    Const :: (Variable v, Basis basis v) => ! (Combinator basis v) -> CTerm basis v
+    Var :: ! v -> CTerm basis v
+    (:@) :: ! (CTerm basis v) -> ! (CTerm basis v) -> CTerm basis v
         -- ^ Bind application to the left.
-     deriving (Eq, Show)
+
+deriving instance Eq v => Eq (CTerm basis v)
+deriving instance Show v => Show (CTerm basis v)
 
 instance (Variable v, Basis basis v) => BinaryTree (CTerm basis v) where
     decompose (tl :@ tr) = Just (tl,tr)
     decompose _ = Nothing
     tl @@ tr = tl :@ tr
-
-instance (Variable v, Basis basis v) => Term (CTerm basis v) where
-    reduceOnce' strategy zipper =
-        case applyStrategy strategy zipper of
-            Just (zipper',(comb,args)) -> Left (applyCombinator (zipper',(comb,args)))
-            Nothing -> Right zipper
-
-    -- ^ One step reduction. Returns Left t if possible, or Right t with the original term,
-    --   if no reduction was possible
-
 
 -- Bind application to the left.
 infixl 5 :@
@@ -133,11 +121,13 @@ class (Variable v) => Basis basis v where
 --
 --      * a term, in which the variables will be replaced
 --
-data Combinator basis v = Combinator
-    {combName   :: ! String, -- ^ needs to start with upper case character
-     combVars   :: ! [v],
-     combReduct :: ! (CTerm basis v)}
-     deriving (Eq)
+data Combinator basis v where
+    Combinator :: (Basis basis v, Variable v) =>
+        {combName   :: ! String, -- ^ needs to start with upper case character
+         combVars   :: ! [v],
+         combReduct :: ! (CTerm basis v)} -> Combinator basis v
+
+deriving instance Eq (Combinator basis v)
 
 instance Show (Combinator basis v) where
     show = combName
@@ -337,6 +327,7 @@ redex = redex' []
 isRedex :: Basis basis v => CTerm basis v -> Bool
 isRedex = isJust . redex
 
+-- | This is the precursor to reduction with strategies, and thus obsolete
 -- | A "Left" term is returned if reduction has changed the term, else a "Right" term.
 oneStepHeadReduction :: (Variable v, Basis basis v)
                             => CTerm basis v -> Either (CTerm basis v) (CTerm basis v)
@@ -350,6 +341,7 @@ oneStepHeadReduction term =
                                         else foldl (:@) replaced (drop (primArity comb) args))
         Nothing -> Right term
 
+-- | This is the precursor to reduction with strategies, and thus obsolete
 -- | Reducing a head redex repeatedly, until it does not change any more.
 --
 --  This is not guaranteed to terminate.
@@ -369,55 +361,33 @@ weakHeadReduction t =
 -- when it finds a new position.
 --
 -- Otherwise return 'Nothing'
---type Strategy basis v =  TermZipper basis v -> Maybe (TermZipper basis v)
 
--- |
-normalOrderStrategy :: (Variable v, Basis basis v) => Strategy (CTerm basis v)
-normalOrderStrategy = Strategy (\ zipper -> (mplus (down zipper) (up zipper)))
-  where
-    down zipper' = case zipDownLeft' zipper' of
-                    Nothing -> zipDownRight zipper'
-                    Just z -> down z
-    up zipper' = case zipUpLeft zipper' of
-                    Nothing -> case zipUpRight zipper' of
-                                Nothing -> Nothing
-                                Just z' -> zipDownRight z'
-                    Just z -> up z
+instance (Variable v, Basis basis v) => Term (CTerm basis v) where
+    reduceOnce' strategy zipper =
+        case applyStrategy strategy zipper of
+            Just (zipper',redex) -> Left (applyCombinator (zipper',redex))
+            Nothing -> Right zipper
+    -- ^ One step reduction. Returns Left t if possible, or Right t with the original term,
+    --   if no reduction was possible
+    isTerminal (Var _)          = True
+    isTerminal (Const _)        = True
+    isTerminal _                = False
 
--- | Select the left child if available, but don't go to primitives
---
--- Returns 'Nothing' if this is a 'Var' or a 'Const',
--- or the left child contains a 'Var' or a 'Const'.
-zipDownLeft' ::  (Variable v, Basis basis v) => TermZipper (CTerm basis v) ->
-                        Maybe (TermZipper (CTerm basis v))
-zipDownLeft' zipper = case zipSelected zipper of
-    Var _ :@ _r   -> Nothing
-    Const _ :@ _r -> Nothing
-    _       -> zipDownLeft zipper
 
--- | Select the right child if available, but don't go to primitives
---
--- Returns 'Nothing' if this is a 'Var' or a 'Const',
--- or the right child contains a 'Var' or a 'Const'.
-zipDownRight' ::  (Variable v, Basis basis v) => TermZipper (CTerm basis v) ->
-                        Maybe (TermZipper (CTerm basis v))
-zipDownRight' zipper = case zipSelected zipper of
-    _l :@ Var _   -> Nothing
-    _l :@ Const _ -> Nothing
-    _       -> zipDownRight zipper
-
--- | Applying a strategy means to try to reduce the current selected position.
+-- | Applying a strategy means to test if a redex is at the current position.
 -- If the current position has no redex, apply the strategy to select a new position,
 -- and retry if its a redex.
 applyStrategy :: (Variable v, Basis basis v) =>
          Strategy (CTerm basis v) ->  TermZipper (CTerm basis v) ->
             Maybe (TermZipper (CTerm basis v), Redex basis v)
-applyStrategy (Strategy strategy) zipper =
+applyStrategy strategy zipper =
     case redex (zipSelected zipper) of
          Just r ->  Just (zipper,r)
          Nothing -> case strategy zipper of
             Nothing -> Nothing
-            Just zipper' -> applyStrategy (Strategy strategy) zipper'
+            Just zipper' -> applyStrategy strategy zipper'
+
+
 
 -- | Apply the Combinator comb on the term list
 applyCombinator :: Basis basis v =>

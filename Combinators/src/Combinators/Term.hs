@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances, GADTs, StandaloneDeriving #-}
 -----------------------------------------------------------------------------
 --
 -- Module      :  Combinators.ARS
@@ -16,12 +16,16 @@
 module Combinators.Term where
 
 -- | A binary tree may have a right or left subpart
+import Control.Monad (MonadPlus(..))
+import Data.Maybe (isNothing)
+
 class BinaryTree t where
     decompose :: t -> Maybe (t,t)
     -- ^ Returns the left and right subparts of a tree, if it is not a leaf
     (@@) :: t -> t -> t
     -- ^ Constructs a tree from its left and right subparts
-
+    isLeaf :: t -> Bool
+    isLeaf = isNothing . decompose
 
 -- | A term is a binary tree, which can be reduced one or many times.
 class BinaryTree t => Term t where
@@ -34,6 +38,9 @@ class BinaryTree t => Term t where
         Right zipper' -> Just zipper'
     -- ^ The transitive closure of reduceOnce. Returns Just t if reduction was possible,
     -- or Nothing in case an infinie reduction was detected, which depends on the implementation
+    -- ^ Constructs a tree from its left and right subparts
+    isTerminal :: t -> Bool
+    -- ^ This information is used for reduction
 
 --  This is not guaranteed to terminate.
 reduce :: Term t => Strategy t -> t -> Maybe t
@@ -57,19 +64,55 @@ reduceOnce strategy t = case (reduceOnce' strategy) (zipper t) of
 -- It takes a term in zipper form (see below), and returns the zipper in a form with just the
 -- next head to be reduced selected, or Nothing if no further reduction selection is possible
 
-newtype Term t => Strategy t = Strategy (TermZipper t -> Maybe (TermZipper t))
+type {- Term t => -} Strategy t = TermZipper t -> Maybe (TermZipper t)
+
+normalOrderStrategy :: Term t => Strategy t
+normalOrderStrategy = \ zipper ->
+    let res = mplus (down zipper) (up zipper)
+    in --trace ("normalOrderStrategy from: " ++ show (zipSelected zipper) ++
+       --         " to: " ++ case res of Nothing -> show res; Just z -> show (zipSelected z) ) $
+       res
+  where
+    down zipper' = case zipDownLeft' zipper' of
+                    Nothing -> zipDownRight' zipper'
+                    Just z -> Just z
+    up zipper' = case zipUpLeft zipper' of
+                    Nothing -> case zipUpRight zipper' of
+                                Nothing -> Nothing
+                                Just z' -> zipDownRight' z'
+                    Just z -> up z
+
+-- | Select the left child if it is not a terminal.
+--
+zipDownLeft' ::  Term t => TermZipper t -> Maybe (TermZipper t)
+zipDownLeft' zipper = case decompose (zipSelected zipper) of
+    Just (l,r) | not (isTerminal l) ->
+      Just TermZipper{zipSelected = l,
+                      zipAnchestors = Right r : zipAnchestors zipper}
+    _ -> Nothing
+
+-- | Select the right child if it is not a terminal.
+--
+zipDownRight' ::  Term t => TermZipper t -> Maybe (TermZipper t)
+zipDownRight' zipper = case decompose (zipSelected zipper) of
+    Just (l,r) | not (isLeaf r) ->
+      Just TermZipper{zipSelected = r,
+                      zipAnchestors = Left l : zipAnchestors zipper}
+    _ -> Nothing
+
 
 -----------------------------------------------------------------------------
 -- * Term Zipper
 
 -- | This is a zipper for a term, which is a structure which carries a term and a
 -- position in the term, without the possibility of an invalid position.
-data BinaryTree t => TermZipper t = TermZipper
-  { zipSelected      :: t
-        -- ^ The currently selected term.
-  , zipAnchestors   ::  [Either t t]
-        -- ^ The topmost (root) anchestor comes last.
-  }  deriving (Eq,Show)
+data TermZipper t where
+    TermZipper :: BinaryTree t =>
+        {zipSelected :: t,
+        zipAnchestors :: [Either t t]} ->  TermZipper t
+
+deriving instance Eq t => Eq (TermZipper t)
+deriving instance Show t => Show (TermZipper t)
 
 -- | Construct a 'TermZipper' from a 'Term' with the root as selected element.
 zipper :: Term t => t -> TermZipper t
@@ -127,7 +170,6 @@ zipUpRight zipper =
 
 -- | Select the left child.
 --
--- Returns 'Nothing' if this is a 'Var' or a 'Const'.
 zipDownLeft ::  Term t => TermZipper t -> Maybe (TermZipper t)
 zipDownLeft zipper = case decompose (zipSelected zipper) of
     Just (l,r) ->
@@ -135,16 +177,15 @@ zipDownLeft zipper = case decompose (zipSelected zipper) of
                       zipAnchestors = Right r : zipAnchestors zipper}
     _ -> Nothing
 
-
 -- | Select the right child.
 --
--- Returns 'Nothing' if this is a 'Var' or a 'Const'.
 zipDownRight ::  Term t => TermZipper t -> Maybe (TermZipper t)
 zipDownRight zipper = case decompose (zipSelected zipper) of
     Just (l,r) ->
       Just TermZipper{zipSelected = r,
                       zipAnchestors = Left l : zipAnchestors zipper}
     _ -> Nothing
+
 
 -- | Enumerates all positions for a zipper
 zipEnum :: Term t => TermZipper t -> [TermZipper t]
