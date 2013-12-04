@@ -20,17 +20,16 @@ module Combinators.Combinator (
 -----------------------------------------------------------------------------
 -- * Basis
 -- ** IKS
-    IKS,
-    iIKS,
-    kIKS,
-    sIKS,
+    KS,
+    kKS,
+    sKS,
+    parseKS,
 -----------------------------------------------------------------------------
 -- * Priniting and parsing
     pp,
     pprint,
     parse,
     parseErr,
-    parseIKS,
 -----------------------------------------------------------------------------
 -- * Subterms
     subterm,
@@ -49,7 +48,6 @@ module Combinators.Combinator (
     weakHeadReduction,
 -----------------------------------------------------------------------------
 -- * Normal order reduction
-    normalOrderStrategy,
     applyStrategy,
     applyCombinator,
     normalOrderReduction,
@@ -89,7 +87,6 @@ data CTerm basis v where
     Const :: (Variable v, Basis basis v) => ! (Combinator basis v) -> CTerm basis v
     Var :: ! v -> CTerm basis v
     (:@) :: ! (CTerm basis v) -> ! (CTerm basis v) -> CTerm basis v
-        -- ^ Bind application to the left.
 
 deriving instance Eq v => Eq (CTerm basis v)
 deriving instance Show v => Show (CTerm basis v)
@@ -148,30 +145,34 @@ primArity = length . combVars
 -- This is the Basis with combinators I, K, S
 --
 
-data IKS
+data KS
 
 -- | Definition of the combinators for the IKS Basis
-iIKS, kIKS, sIKS :: Variable v => Combinator IKS v
-iIKS = Combinator "I" [varString "__x"] (Var (varString "__x"))
-kIKS = Combinator "K" [varString "__x", varString "__y"] (Var (varString "__x"))
-sIKS = Combinator "S" [varString "__x", varString "__y", varString"__z"]
+kKS, sKS :: Variable v => Combinator KS v
+kKS = Combinator "K" [varString "__x", varString "__y"] (Var (varString "__x"))
+sKS = Combinator "S" [varString "__x", varString "__y", varString"__z"]
             (Var (varString "__x") :@ Var (varString"__z") :@
             (Var (varString "__y") :@ Var (varString "__z")))
 
+instance Variable v => Basis KS v where
+    primCombs = [kKS,sKS]
 
-instance Variable v => Basis IKS v where
-    primCombs = [iIKS,kIKS,sIKS]
+parseKS :: String -> CTerm KS VarString
+parseKS = parse
 
 -----------------------------------------------------------------------------
 -- * Variables
 -----------------------------------------------------------------------------
 -- * Priniting and parsing
 
+instance Basis basis v => PP (CTerm basis v) where
+    pp = ppC
+
 -- | Pretty prints a term.
 --
 -- Avoids printing outer parenthesis and left parenthesis.
-pp :: Basis basis v => CTerm basis v -> String
-pp t = PP.render (pp' False t)
+ppC :: Basis basis v => CTerm basis v -> String
+ppC t = PP.render (pp' False t)
 
 pp' :: Basis basis v => Bool -> CTerm basis v -> PP.Doc
 pp' _ (Const c)     = PP.text (combName c)
@@ -204,8 +205,6 @@ parseErr str = case parse' str of
 
 
 
-parseIKS :: String -> CTerm IKS VarString
-parseIKS = parse :: String -> CTerm IKS VarString
 
 parse' :: Basis b v => String -> Either PA.ParseError (CTerm b v)
 parse' = PA.parse (parseTerm Nothing) ""
@@ -406,9 +405,9 @@ applyCombinator (zipper',(comb,args)) =
 --
 --  This is not guaranteed to terminate.
 normalOrderReduction :: (Show v, Basis basis v) => CTerm basis v -> CTerm basis v
-normalOrderReduction = reduceIt normalOrderStrategy
+normalOrderReduction = reduceIt normalOrder
 
 -- | Takes a string, parses it, applies normalOrderReduction and prints the result.
 strReduction :: String -> String
-strReduction = pp . normalOrderReduction . parseIKS
+strReduction = pp . normalOrderReduction . parseKS
 

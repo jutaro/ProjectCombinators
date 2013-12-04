@@ -14,8 +14,7 @@
 
 module Combinators.PropertiesTest where
 
-import Combinators.Combinator
-import Combinators.Properties
+import Combinators
 
 import Test.HUnit.Base (Assertion)
 import Test.HUnit ((@=?), assertBool)

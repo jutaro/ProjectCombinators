@@ -16,9 +16,7 @@
 
 module Combinators.CombinatorTest where
 
-import Combinators.Combinator
-import Combinators.Variable
-import Combinators.Term
+import Combinators
 
 import Test.HUnit.Base (Assertion)
 import Test.HUnit ((@=?), assertBool)

@@ -19,5 +19,6 @@ import Combinators.Combinator as X
 import Combinators.CombinatorBasis as X
 import Combinators.Lambda as X
 import Combinators.Properties as X
+import Combinators.CombLambda as X
 
 

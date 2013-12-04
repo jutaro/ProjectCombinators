@@ -15,10 +15,11 @@
 
 module Combinators.Term where
 
--- | A binary tree may have a right or left subpart
 import Control.Monad (MonadPlus(..))
 import Data.Maybe (isNothing)
+import Debug.Trace (trace)
 
+-- | A binary tree may have a right or left subpart
 class BinaryTree t where
     decompose :: t -> Maybe (t,t)
     -- ^ Returns the left and right subparts of a tree, if it is not a leaf
@@ -27,15 +28,20 @@ class BinaryTree t where
     isLeaf :: t -> Bool
     isLeaf = isNothing . decompose
 
+class PP t where
+    pp :: t -> String
+
 -- | A term is a binary tree, which can be reduced one or many times.
-class BinaryTree t => Term t where
+class (BinaryTree t , PP t) => Term t where
     reduceOnce' :: (Strategy t) -> TermZipper t -> Either (TermZipper t) (TermZipper t)
     -- ^ One step reduction. Returns Left t if possible, or Right t with the original term,
     --   if no reduction was possible
     reduce' :: (Strategy t) -> TermZipper t -> Maybe (TermZipper t)
     reduce' strategy zipper = case reduceOnce' strategy zipper of
-        Left zipper' -> reduce' strategy zipper'
+        Left zipper' -> trace (pp (unzipper zipper')) $ reduce' strategy zipper'
         Right zipper' -> Just zipper'
+
+
     -- ^ The transitive closure of reduceOnce. Returns Just t if reduction was possible,
     -- or Nothing in case an infinie reduction was detected, which depends on the implementation
     -- ^ Constructs a tree from its left and right subparts
@@ -66,8 +72,8 @@ reduceOnce strategy t = case (reduceOnce' strategy) (zipper t) of
 
 type {- Term t => -} Strategy t = TermZipper t -> Maybe (TermZipper t)
 
-normalOrderStrategy :: Term t => Strategy t
-normalOrderStrategy = \ zipper ->
+normalOrder :: Term t => Strategy t
+normalOrder = \ zipper ->
     let res = mplus (down zipper) (up zipper)
     in --trace ("normalOrderStrategy from: " ++ show (zipSelected zipper) ++
        --         " to: " ++ case res of Nothing -> show res; Just z -> show (zipSelected z) ) $

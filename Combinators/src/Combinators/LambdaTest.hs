@@ -16,13 +16,12 @@
 
 module Combinators.LambdaTest where
 
-import Combinators.Lambda
+import Combinators
 
 import Test.QuickCheck
        (Arbitrary(..), elements, frequency)
 import Test.Framework (Test)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
-import Combinators.Variable (VarString)
 import Control.Monad (liftM2, liftM)
 import Test.HUnit ((@=?), Assertion)
 import Test.Framework.Providers.HUnit (testCase)
@@ -39,9 +38,9 @@ instance Arbitrary (LTerm VarString) where
 
 --  For any term: print and parse give the original term
 prop_printParse :: LTerm VarString -> Bool
-prop_printParse term = --trace ("\n\n" ++ ppl term ++ "\n" ++ ppl (parseStringVarL (ppl term))
-                       --     ++ "\n\n" ++ show term ++ "\n" ++ show (parseStringVarL (ppl term))) $
-                            term == parseStringVarL (ppl term)
+prop_printParse term = --trace ("\n\n" ++ ppl term ++ "\n" ++ ppl (parseLambda (ppl term))
+                       --     ++ "\n\n" ++ show term ++ "\n" ++ show (parseLambda (ppl term))) $
+                            term == parseLambda (pp term)
 
 testLambda :: [Test]
 testLambda = [testProperty "prop_printParse" prop_printParse
@@ -51,8 +50,8 @@ testLambda = [testProperty "prop_printParse" prop_printParse
 
 testReduction1 :: Assertion
 testReduction1 =
-    parseStringVarL "y y y" @=? (normalOrderReductionL . parseStringVarL) "(\\x.x x) y y"
+    parseLambda "y y y" @=? (reduceIt normalOrder . parseLambda) "(\\x.x x) y y"
 
 testReduction2 :: Assertion
 testReduction2 =
-    parseStringVarL "\\x.x" @=? (normalOrderReductionL . parseStringVarL) "(\\f.f \\x.x) \\s.s s"
+    parseLambda "\\x.x" @=? (reduceIt normalOrder . parseLambda) "(\\f.f \\x.x) \\s.s s"

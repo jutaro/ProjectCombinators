@@ -24,7 +24,7 @@ import Combinators.Variable
 
 -- | A term t is in weak normal form, iff M contains no redexes.
 _isWeakNormal :: Basis basis v => CTerm basis v -> Bool
-_isWeakNormal t = case reduceOnce normalOrderStrategy t of
+_isWeakNormal t = case reduceOnce normalOrder t of
                     Left _ -> False
                     Right _ -> True -- term not changed, so no redex
 

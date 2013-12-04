@@ -24,13 +24,13 @@ import Test.Framework (Test)
 
 
 testWK :: Assertion
-testWK  = parseBCKW "x" @=? (normalOrderReduction . parseBCKW) "W K x"
+testWK  = parseIBCWK "x" @=? (normalOrderReduction . parseIBCWK) "W K x"
 
 testS :: Assertion
-testS  = parseBCKW "x z (y z)" @=? (normalOrderReduction . parseBCKW) "B (B (B W) C) (B B) x y z"
+testS  = parseIBCWK "x z (y z)" @=? (normalOrderReduction . parseIBCWK) "B (B (B W) C) (B B) x y z"
 
 testS2 :: Assertion
-testS2  = parseBCKW "x z (y z)" @=? (normalOrderReduction . parseBCKW) "B (B W) (B B C) x y z"
+testS2  = parseIBCWK "x z (y z)" @=? (normalOrderReduction . parseIBCWK) "B (B W) (B B C) x y z"
 
 
 testBasis :: [Test]

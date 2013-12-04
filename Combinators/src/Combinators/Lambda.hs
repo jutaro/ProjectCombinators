@@ -15,11 +15,11 @@
 
 module Combinators.Lambda (
     LTerm(..),
-    parseStringVarL,
-    ppl,
-    substitutel,
-    strReductionL,
-    normalOrderReductionL
+    parseLambda,
+    reduceLambda,
+    occurs,
+    freeVars,
+    isClosed
 ) where
 
 import Combinators.Variable
@@ -28,6 +28,7 @@ import Combinators.Term
 import Text.Parsec.String (Parser)
 import qualified Text.PrettyPrint as PP
 import qualified Text.Parsec as PA
+import Data.List (delete)
 
 -----------------------------------------------------------------------------
 -- * Basic types
@@ -46,7 +47,6 @@ data LTerm v where
       LVar :: Variable v => v -> LTerm v
       LAbst :: Variable v => v -> LTerm v
       (:@:) :: Variable v => LTerm v -> LTerm v -> LTerm v
---      (:\:) :: Variable v => v -> LTerm v -> LTerm v
 
 deriving instance Eq (LTerm v)
 deriving instance Show (LTerm v)
@@ -61,6 +61,9 @@ infixl 5 :@:
 
 -----------------------------------------------------------------------------
 -- * Priniting and parsing
+
+instance Variable v => PP (LTerm v) where
+    pp = ppl
 
 -- | Pretty prints a lambda term.
 --
@@ -85,14 +88,14 @@ pp' _ _ _ (LAbst _)                         = error "Lambda>>pp': Lonely LAbst"
 
 -- | Takes a String and returns a Term
 --
--- Throws an error, when the String can't be parsed
+parseLambda :: String -> LTerm VarString
+parseLambda = parse
+
+-- | Throws an error, when the String can't be parsed
 parse ::  Variable v => String -> LTerm v
 parse str = case parse' str of
                 Left err    -> error (show err)
                 Right term  -> term
-
-parseStringVarL :: String -> LTerm VarString
-parseStringVarL = parse
 
 parse' :: Variable v => String -> Either PA.ParseError (LTerm v)
 parse' = PA.parse (parseTerm Nothing) ""
@@ -135,9 +138,45 @@ parsePart = do
     PA.<?> "parsePart Nothing"
 
 -----------------------------------------------------------------------------
+-- * Properties
+
+-- | The substitution of a variable "var" with a term "replace" in the matched term
+--   Returns the resulting term.
+substitutel :: v -> LTerm v -> LTerm v -> LTerm v
+substitutel var n (LVar v) | v == var          = n
+                           | otherwise        = LVar v
+substitutel var n (LAbst v :@: t) | v == var   = LAbst v :@: t
+                                  | otherwise = LAbst v :@: substitutel var n t
+substitutel var n (x :@: y)                   = substitutel var n x :@: substitutel var n y
+substitutel _ _ (LAbst _)                     = error "Lambda>>substitutel: Lonely LAbst"
+
+-- | Does variable v occurst in the term?
+occurs :: v -> LTerm v -> Bool
+occurs v (LVar n) = v == n
+occurs v (LAbst n :@: t) = if v == n then False else occurs n t
+occurs v (l :@: r) = occurs v l || occurs v r
+occurs _v (LAbst n) = error $ "CombLambda>>bracketAbstract: Lonely Abstraction " ++ show n
+
+freeVars :: LTerm v -> [v]
+freeVars (LVar n) = [n]
+freeVars (LAbst n :@: t) = delete n (freeVars t)
+freeVars (l :@: r) = freeVars l ++ freeVars r
+freeVars (LAbst n) = error $ "CombLambda>>freeVars: Lonely Abstraction " ++ show n
+
+isClosed :: LTerm v -> Bool
+isClosed = null . freeVars
+
+
+-----------------------------------------------------------------------------
 -- * Reduction
 
+-- | Type, which means (\\v.t1) t2
 type Redex v = (v,LTerm v, LTerm v)
+
+-- | Returns a redex, if the given term matches
+redex :: LTerm v -> Maybe (Redex v)
+redex (((LAbst v) :@: b) :@: c) = Just (v,b,c)
+redex _ = Nothing
 
 
 instance Variable v => Term (LTerm v) where
@@ -145,6 +184,7 @@ instance Variable v => Term (LTerm v) where
         case applyStrategy strategy zipper of
             Just (zipper',redex) -> Left (reduceBeta zipper' redex)
             Nothing -> Right zipper
+
     isTerminal (LVar _)         = True
     isTerminal (LAbst _)        = True
     isTerminal (LVar _ :@: _r)  = True
@@ -166,35 +206,15 @@ applyStrategy strategy zipper =
             Nothing -> Nothing
             Just zipper' -> applyStrategy strategy zipper'
 
-redex :: LTerm v -> Maybe (Redex v)
-redex (((LAbst v) :@: b) :@: c) = Just (v,b,c)
-redex _ = Nothing
 
 reduceBeta :: TermZipper (LTerm v) -> Redex v -> TermZipper (LTerm v)
 reduceBeta tz (v,b,c) = tz{zipSelected=substitutel v c b}
 
--- | Normal order reduction for a term.
---
---  This is not guaranteed to terminate.
-normalOrderReductionL :: Variable v => LTerm v -> LTerm v
-normalOrderReductionL = reduceIt normalOrderStrategy
 
 -- | Takes a string, parses it, applies normalOrderReduction and prints the result.
-strReductionL :: String -> String
-strReductionL = ppl . normalOrderReductionL . parseStringVarL
+reduceLambda :: String -> String
+reduceLambda = pp . reduceIt normalOrder . parseLambda
 
 -----------------------------------------------------------------------------
 -- * Substitution
--- | The substitution of a variable "var" with a term "replace" in the matched term
---
-
--- Returns the resulting term.
-substitutel :: v -> LTerm v -> LTerm v -> LTerm v
-substitutel var replace (LVar x) | x == var = replace
-                                | otherwise = LVar x
-substitutel var replace (LAbst v :@: t) | v == var = error "Lambda>>substitutel: no rename"
-                                 | otherwise = LAbst v :@: substitutel var replace t
-substitutel var replace (x :@: y) = substitutel var replace x :@: substitutel var replace y
-substitutel _ _ (LAbst _)         = error "Lambda>>substitutel: Lonely LAbst"
-
 
