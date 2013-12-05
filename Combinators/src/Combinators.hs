@@ -20,5 +20,6 @@ import Combinators.CombinatorBasis as X
 import Combinators.Lambda as X
 import Combinators.Properties as X
 import Combinators.CombLambda as X
+import Combinators.CombGenerator as X
 
 

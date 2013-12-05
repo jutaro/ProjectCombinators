@@ -20,6 +20,8 @@ import Combinators.CombinatorTest
 import Combinators.LambdaTest
 import Combinators.CombinatorBasisTest
 import Combinators.PropertiesTest
+import Combinators.CombGenerator
+
 
 import Test.Framework
 
@@ -30,6 +32,6 @@ main = defaultMain $
             testLambda
 
 testCombinators :: [Test]
-testCombinators = testLanguage ++ testProperties ++ testBasis
+testCombinators = testLanguage ++ testProperties ++ testBasis ++ testCombGenerator
 
 
