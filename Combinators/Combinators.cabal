@@ -16,7 +16,7 @@ data-dir: ""
 library
     build-depends: base >=4, parsec -any, pretty -any, QuickCheck -any,
                    HUnit -any, test-framework -any, test-framework-quickcheck2 -any,
-                   test-framework-hunit -any, array -any
+                   test-framework-hunit -any, array -any, containers -any
     exposed-modules: Combinators
     exposed: True
     buildable: True
@@ -33,7 +33,7 @@ library
 executable combinators
     build-depends: base >=4, parsec -any, pretty -any, QuickCheck -any,
                    HUnit -any, test-framework -any, test-framework-quickcheck2 -any,
-                   test-framework-hunit -any, array -any
+                   test-framework-hunit -any, array -any, containers -any
     main-is: MainCombinators.hs
     buildable: True
     extensions: CPP
@@ -51,7 +51,7 @@ executable bench-combinators
     build-depends: base -any, parsec -any, pretty -any,
                    QuickCheck -any, HUnit -any, test-framework -any,
                    test-framework-quickcheck2 -any, test-framework-hunit -any,
-                   criterion -any, parallel -any, array -any
+                   criterion -any, parallel -any, array -any, containers -any
     main-is: BenchmarkCombinators.hs
     buildable: True
     extensions: CPP
@@ -68,7 +68,7 @@ executable bench-combinators
 test-suite test-combinators
     build-depends: base -any, parsec -any, pretty -any,
                    QuickCheck -any, HUnit -any, test-framework -any,
-                   test-framework-quickcheck2 -any, test-framework-hunit -any, array -any
+                   test-framework-quickcheck2 -any, test-framework-hunit -any, array -any, containers -any
     type: exitcode-stdio-1.0
     main-is: MainTestCombinators.hs
     buildable: True

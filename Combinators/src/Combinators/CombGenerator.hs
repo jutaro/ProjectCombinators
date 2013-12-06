@@ -9,7 +9,7 @@
 -- Stability   :  provisional
 -- Portability :
 --
--- |
+-- | Generation/Enumerations of Combinators with rank, unrank and length functions
 --
 -----------------------------------------------------------------------------
 
@@ -20,8 +20,12 @@ import Combinators.Variable
 import Combinators.Term
 
 import Data.Array.Unboxed
+import qualified Data.Map as Map
 import Test.Framework (Test)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
+import Control.Monad (replicateM)
+import System.IO.Unsafe (unsafePerformIO)
+import Data.IORef (atomicModifyIORef, IORef, readIORef, newIORef)
 
 -- | Produces a list of catalan numbers
 catalans :: [Integer]
@@ -49,13 +53,58 @@ genBinaryTreeStructs n = gen initialArray n (n-1) 1
                                             else []
                                     else [])
 
+rankTreeStruct :: BinaryTreeStruct -> Integer
+rankTreeStruct seq = rank' 0 n 1 (n - 1)
+  where
+    n = div (fromIntegral $ snd (bounds seq)) 2
+    rank' r k i m | i <= 2 * n && m >= 0 = if seq ! i == True
+                                        then rank' r k (i+1) (m-1)
+                                        else rank' (r+gfunc k m) (k-1) (i+1) m
+                  | otherwise     = r + 1
+
+
+gfunc :: Int -> Int -> Integer
+gfunc 1 _ = 1
+gfunc _ 0 = 1
+gfunc k l = 1 + sum (map (\ j -> gfunc (k-1) j) [1..l])
+
+{-
+gfuncMem :: Map.Map (Int,Int) Integer -> Int -> Int -> Integer
+gfuncMem _gmap 1 _ = 1
+gfuncMem _gmap _ 0 = 1
+gfuncMem  gmap k l = case Map.lookup (k,l) map  of
+                        Nothing  -> let res = 1 + sum (map (\ j -> gfuncMem (k-1) j) [1..l])
+                                    in Map.insert (k,l) res map
+                        Just n -> n
+
+gfunc :: Int -> Int -> Integer
+gfunc 1 _ = 1
+gfunc _ 0 = 1
+gfunc k l = gfunc k (l-1) + gfunc (k-1) l
+-- gfunc k l | otherwise = error "CombGenerator>>gfunc: Illegal parameter l >= k"
+-}
+
+
+
 printStruct :: BinaryTreeStruct -> String
 printStruct a = map (\e -> if e then '1' else '0') (elems a)
 
--- Generate combinators with n nodes (and n+1 leaves), with all structures and filled with array
+-- | Generates an infinite List of all possible combinators of this basis
+genCombs :: (PP (CTerm basis v),Variable v, Basis basis v) => [CTerm basis v]
+genCombs = concatMap genCombsN [0..]
+
+-- | Generate instances of a combinatory basis with n + 1 combinators.
+genCombsN :: forall b v.(PP (CTerm b v),Variable v, Basis b v) => Int -> [CTerm b v]
+genCombsN n = concatMap (genCombsTree n) permutations
+  where
+    primitiveCombinators :: [Combinator b v] = primCombs
+    permutations = replicateM (n+1) primitiveCombinators
+
+-- | Generate combinators with n nodes (and n+1 leaves), with all structures and filled with array
 -- contents
-genCombs :: (PP (CTerm basis v),Variable v, Basis basis v) => Int -> [Combinator basis v] -> [CTerm basis v]
-genCombs n combs =
+genCombsTree :: (PP (CTerm basis v),Variable v, Basis basis v) =>
+                    Int -> [Combinator basis v] -> [CTerm basis v]
+genCombsTree n combs =
     let treeStructs = genBinaryTreeStructs n
     in map ((\ (r,_,_) -> r) . (gen combs 1)) treeStructs
       where
@@ -66,16 +115,22 @@ genCombs n combs =
                 (right,index'', combList'') = gen combList' (index') ts
             in (left :@ right,index'',combList'')
 
-allCombsN :: (PP (CTerm basis v),Variable v, Basis basis v) => Int -> [CTerm basis v]
-allCombsN = undefined
-
-allCombs :: (PP (CTerm basis v),Variable v, Basis basis v) => [CTerm basis v]
-allCombs = concatMap allCombsN [2..]
+sizeGenCombsN :: forall b. Basis b VarString => b -> [Integer]
+sizeGenCombsN _ = map (\n -> (catalans !! n) * (fromIntegral (length primitiveCombinators) ^ (n+1))) [0..]
+  where
+    primitiveCombinators :: [Combinator b VarString] = primCombs
 
 -- * Testing
 prop_TreeGen :: Int -> Bool
-prop_TreeGen n =  if n >= 1 && n < 20
+prop_TreeGen n =  if n >= 1 && n < 15
                     then  length (genBinaryTreeStructs n) == fromIntegral (catalans !! n)
+                    else True
+
+-- * Testing
+prop_CombGen :: Int -> Bool
+prop_CombGen n =  if n >= 1 && n < 10
+                    then  fromIntegral (length (genCombsN n :: [CTerm KS VarString])) ==
+                            (sizeGenCombsN (undefined :: KS) !! n)
                     else True
 
 testCombGenerator :: [Test]
