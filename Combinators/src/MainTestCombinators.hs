@@ -20,8 +20,7 @@ import Combinators.CombinatorTest
 import Combinators.LambdaTest
 import Combinators.CombinatorBasisTest
 import Combinators.PropertiesTest
-import Combinators.CombGenerator
-
+import Combinators.CombGeneratorTest
 
 import Test.Framework
 

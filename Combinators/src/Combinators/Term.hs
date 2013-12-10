@@ -31,84 +31,38 @@ class BinaryTree t where
 class PP t where
     pp :: t -> String
 
--- | A term is a binary tree, which can be reduced one or many times.
-class (BinaryTree t , PP t) => Term t where
-    reduceOnce' :: (Strategy t) -> TermZipper t -> Either (TermZipper t) (TermZipper t)
-    -- ^ One step reduction. Returns Left t if possible, or Right t with the original term,
-    --   if no reduction was possible
-    reduce' :: (Strategy t) -> TermZipper t -> Maybe (TermZipper t)
-    reduce' strategy zipper = case reduceOnce' strategy zipper of
-        Left zipper' -> trace (pp (unzipper zipper')) $ reduce' strategy zipper'
-        Right zipper' -> Just zipper'
 
+-- | preorderLeaves
+preorderLeaves :: BinaryTree t => t -> [t]
+preorderLeaves t = case decompose t of
+                    Just (l,r) -> preorderLeaves l ++ preorderLeaves r
+                    Nothing -> [t]
 
-    -- ^ The transitive closure of reduceOnce. Returns Just t if reduction was possible,
-    -- or Nothing in case an infinie reduction was detected, which depends on the implementation
-    -- ^ Constructs a tree from its left and right subparts
-    isTerminal :: t -> Bool
-    -- ^ This information is used for reduction
-
---  This is not guaranteed to terminate.
-reduce :: Term t => Strategy t -> t -> Maybe t
-reduce strategy t = case (reduce' strategy) (zipper t) of
-                        Just t' -> Just (unzipper t')
-                        Nothing -> Nothing
-
---  This is not guaranteed to terminate.
-reduceIt :: Term t => Strategy t -> t -> t
-reduceIt strategy t = case (reduce strategy) t of
-                        Just t' -> t'
-                        Nothing -> error "Term>>reduceIt: Nontermination detected?"
-
---
-reduceOnce :: Term t => Strategy t -> t -> Either t t
-reduceOnce strategy t = case (reduceOnce' strategy) (zipper t) of
-                            Left t' -> Left (unzipper t')
-                            Right t' -> Right (unzipper t')
-
--- | A strategy fixes the order of reduction.
--- It takes a term in zipper form (see below), and returns the zipper in a form with just the
--- next head to be reduced selected, or Nothing if no further reduction selection is possible
-
-type {- Term t => -} Strategy t = TermZipper t -> Maybe (TermZipper t)
-
-normalOrder :: Term t => Strategy t
-normalOrder = \ zipper ->
-    let res = mplus (down zipper) (up zipper)
-    in --trace ("normalOrderStrategy from: " ++ show (zipSelected zipper) ++
-       --         " to: " ++ case res of Nothing -> show res; Just z -> show (zipSelected z) ) $
-       res
+spine :: BinaryTree t => t -> [t]
+spine = reverse . spine'
   where
-    down zipper' = case zipDownLeft' zipper' of
-                    Nothing -> zipDownRight' zipper'
-                    Just z -> Just z
-    up zipper' = case zipUpLeft zipper' of
-                    Nothing -> case zipUpRight zipper' of
-                                Nothing -> Nothing
-                                Just z' -> zipDownRight' z'
-                    Just z -> up z
+    spine' t = case decompose t of
+                Just (l,r) -> (r : spine' l)
+                Nothing -> [t]
 
--- | Select the left child if it is not a terminal.
---
-zipDownLeft' ::  Term t => TermZipper t -> Maybe (TermZipper t)
-zipDownLeft' zipper = case decompose (zipSelected zipper) of
-    Just (l,r) | not (isTerminal l) ->
-      Just TermZipper{zipSelected = l,
-                      zipAnchestors = Right r : zipAnchestors zipper}
-    _ -> Nothing
+spineLength :: BinaryTree t => t -> Int
+spineLength t = case decompose t of
+                 Just (l,_r) ->  1 + spineLength l
+                 _ -> 1
 
--- | Select the right child if it is not a terminal.
---
-zipDownRight' ::  Term t => TermZipper t -> Maybe (TermZipper t)
-zipDownRight' zipper = case decompose (zipSelected zipper) of
-    Just (l,r) | not (isLeaf r) ->
-      Just TermZipper{zipSelected = r,
-                      zipAnchestors = Left l : zipAnchestors zipper}
-    _ -> Nothing
+nodeSize :: BinaryTree t => t -> Int
+nodeSize t = case decompose t of
+                Nothing -> 0
+                Just (l,r) -> 1 + nodeSize l + nodeSize r
 
+leafSize :: BinaryTree t => t -> Int
+leafSize t = case decompose t of
+                Nothing -> 1
+                Just (l,r) -> leafSize l + leafSize r
 
 -----------------------------------------------------------------------------
--- * Term Zipper
+-- * Zipper
+-----------------------------------------------------------------------------
 
 -- | This is a zipper for a term, which is a structure which carries a term and a
 -- position in the term, without the possibility of an invalid position.
@@ -203,18 +157,6 @@ zipEnum zipper =  zipEnum' [] (Just (zipRoot zipper))
         in zipEnum' accu'' (zipDownRight zipper')
     zipEnum' accu Nothing = accu
 
-spine :: Term t => t -> [t]
-spine = reverse . spine'
-  where
-    spine' t = case decompose t of
-                Just (l,r) -> (r : spine' l)
-                Nothing -> [t]
-
-spineLength :: Term t => t -> Int
-spineLength t = case decompose t of
-                 Just (l,_r) ->  1 + spineLength l
-                 _ -> 1
-
 zipperGetPath :: Term t => TermZipper t -> [Int]
 zipperGetPath z = reverse (zipperGetPath' [] (reverse (zipAnchestors z)))
   where
@@ -222,4 +164,84 @@ zipperGetPath z = reverse (zipperGetPath' [] (reverse (zipAnchestors z)))
     zipperGetPath' accu (Left term: rest)   = zipperGetPath' (spineLength term:accu) rest
     zipperGetPath' accu (Right _term: [])   = 0:accu
     zipperGetPath' accu (Right _term: rest) = zipperGetPath' accu rest
+
+-----------------------------------------------------------------------------
+-- * Term, Strategy and abstract reduction
+-----------------------------------------------------------------------------
+
+-- | A term is a binary tree, which can be reduced one or many times.
+class (BinaryTree t , PP t) => Term t where
+    reduceOnce' :: (Strategy t) -> TermZipper t -> Either (TermZipper t) (TermZipper t)
+    -- ^ One step reduction. Returns Left t if possible, or Right t with the original term,
+    --   if no reduction was possible
+    reduce' :: (Strategy t) -> TermZipper t -> Maybe (TermZipper t)
+    reduce' strategy zipper = case reduceOnce' strategy zipper of
+        Left zipper' -> trace (pp (unzipper zipper')) $ reduce' strategy zipper'
+        Right zipper' -> Just zipper'
+
+
+    -- ^ The transitive closure of reduceOnce. Returns Just t if reduction was possible,
+    -- or Nothing in case an infinie reduction was detected, which depends on the implementation
+    -- ^ Constructs a tree from its left and right subparts
+    isTerminal :: t -> Bool
+    -- ^ This information is used for reduction
+
+-- | A strategy fixes the order of reduction.
+-- It takes a term in zipper form (see below), and returns the zipper in a form with just the
+-- next head to be reduced selected, or Nothing if no further reduction selection is possible
+
+type {- Term t => -} Strategy t = TermZipper t -> Maybe (TermZipper t)
+
+--  This is not guaranteed to terminate.
+reduce :: Term t => Strategy t -> t -> Maybe t
+reduce strategy t = case (reduce' strategy) (zipper t) of
+                        Just t' -> Just (unzipper t')
+                        Nothing -> Nothing
+
+--  This is not guaranteed to terminate.
+reduceIt :: Term t => Strategy t -> t -> t
+reduceIt strategy t = case (reduce strategy) t of
+                        Just t' -> t'
+                        Nothing -> error "Term>>reduceIt: Nontermination detected?"
+
+--
+reduceOnce :: Term t => Strategy t -> t -> Either t t
+reduceOnce strategy t = case (reduceOnce' strategy) (zipper t) of
+                            Left t' -> Left (unzipper t')
+                            Right t' -> Right (unzipper t')
+
+normalOrder :: Term t => Strategy t
+normalOrder = \ zipper ->
+    let res = mplus (down zipper) (up zipper)
+    in --trace ("normalOrderStrategy from: " ++ show (zipSelected zipper) ++
+       --         " to: " ++ case res of Nothing -> show res; Just z -> show (zipSelected z) ) $
+       res
+  where
+    down zipper' = case zipDownLeft' zipper' of
+                    Nothing -> zipDownRight' zipper'
+                    Just z -> Just z
+    up zipper' = case zipUpLeft zipper' of
+                    Nothing -> case zipUpRight zipper' of
+                                Nothing -> Nothing
+                                Just z' -> zipDownRight' z'
+                    Just z -> up z
+
+
+-- | Select the left child if it is not a terminal.
+--
+zipDownLeft' ::  Term t => TermZipper t -> Maybe (TermZipper t)
+zipDownLeft' zipper = case decompose (zipSelected zipper) of
+    Just (l,r) | not (isTerminal l) ->
+      Just TermZipper{zipSelected = l,
+                      zipAnchestors = Right r : zipAnchestors zipper}
+    _ -> Nothing
+
+-- | Select the right child if it is not a terminal.
+--
+zipDownRight' ::  Term t => TermZipper t -> Maybe (TermZipper t)
+zipDownRight' zipper = case decompose (zipSelected zipper) of
+    Just (l,r) | not (isLeaf r) ->
+      Just TermZipper{zipSelected = r,
+                      zipAnchestors = Left l : zipAnchestors zipper}
+    _ -> Nothing
 

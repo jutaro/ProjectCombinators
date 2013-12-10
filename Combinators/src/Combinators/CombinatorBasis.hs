@@ -47,7 +47,7 @@ instance Variable v => BracketAbstract IBCWK v where
 -}
 
 parseIBCWK :: String -> CTerm IBCWK VarString
-parseIBCWK = undefined -- parse :: String -> CTerm IBCWK VarString
+parseIBCWK = parse :: String -> CTerm IBCWK VarString
 
 -- * Definition of the combinators for the IKS Basis
 
