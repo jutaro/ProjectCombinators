@@ -51,6 +51,8 @@ instance Arbitrary (CTerm IKS VarString) where
             liftM Var (elements ["u","v","w","x","y","z"]),
             liftM2 (:@) arbitrary arbitrary]
 
+
+
 --  For any term: print and parse give the original term
 prop_printParse :: CTerm IKS VarString -> Bool
 prop_printParse term = term == parseIKS (pp term)

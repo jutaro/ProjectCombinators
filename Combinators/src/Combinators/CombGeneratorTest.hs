@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 -----------------------------------------------------------------------------
 --
 -- Module      :  Combinators.CombGeneratorTest
@@ -20,8 +22,15 @@ import Combinators.Variable
 
 import Test.Framework (Test)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
+import Test.QuickCheck
+import Control.Monad (liftM2, liftM)
+import Debug.Trace (trace)
 
--- * Testing
+instance Arbitrary (CTerm KS VarString) where
+    arbitrary = frequency
+        [(2,liftM Const (elements primCombs)),
+            (1,liftM2 (:@) arbitrary arbitrary)]
+
 prop_rankTreeStruct :: Int -> Integer -> Bool
 prop_rankTreeStruct n m =
                   if n > 0 && n < 25 && m > 1 && m <= (catalans !! n)
@@ -36,34 +45,40 @@ prop_grankTreeStruct n =
                          in grankTreeStruct ts == n
                     else True
 
--- * Testing
-prop_gfunc :: Int -> Int -> Bool
-prop_gfunc n m =
-    if n >= 1 && n < 20 && m >= 1 && m < n
-        then
-            let table = initGFuncTable (max n m)
-            in gfunc n m  == gfunc' table n m
-        else True
 
--- * Testing
 prop_TreeGen :: Int -> Bool
 prop_TreeGen n =  if n >= 1 && n < 15
                     then  length (genBinaryTreeStructs n) == fromIntegral (catalans !! n)
                     else True
 
--- * Testing
 prop_CombGen :: Int -> Bool
 prop_CombGen n =  if n >= 1 && n < 10
                     then  fromIntegral (length (genCombsN n :: [CTerm KS VarString])) ==
                             (sizeGenCombsN (undefined :: KS) !! n)
                     else True
 
+prop_RankGen :: CTerm KS VarString -> Bool
+prop_RankGen t =  let ind = rankComb t
+                  in trace ("prop_RankGen t: " ++ show t ++ " index: " ++ show ind) $
+                    if ind > 1000000
+                            then True
+                            else head (take 1 (drop (fromIntegral (ind-1)) genCombs)) == t
+
+prop_RankUnrank :: CTerm KS VarString -> Bool
+prop_RankUnrank t = let ind = rankComb t
+                    in trace ("prop_RankUnrank t: " ++ show t ++ " index: " ++ show ind) $
+                        if ind > 10000000000
+                            then True
+                            else unrankComb ind == t
+
+
 testCombGenerator :: [Test]
-testCombGenerator = [testProperty "prop_TreeGen" prop_TreeGen,
-                        testProperty "prop_CombGen" prop_CombGen,
-                        testProperty "prop_gfunc" prop_gfunc,
-                        testProperty "prop_rankTreeStruct" prop_rankTreeStruct,
-                        testProperty "prop_grankTreeStruct" prop_grankTreeStruct
+testCombGenerator = [testProperty "prop_TreeGen" prop_TreeGen
+                        ,testProperty "prop_CombGen" prop_CombGen
+                        ,testProperty "prop_rankTreeStruct" prop_rankTreeStruct
+                        ,testProperty "prop_grankTreeStruct" prop_grankTreeStruct
+                        ,testProperty "prop_RankGen" prop_RankGen
+                        ,testProperty "prop_RankUnrank" prop_RankUnrank
                         ]
 
 
