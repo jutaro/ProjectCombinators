@@ -54,7 +54,7 @@ executable bench-combinators
                    QuickCheck -any, HUnit -any, test-framework -any,
                    test-framework-quickcheck2 -any, test-framework-hunit -any,
                    criterion -any, parallel -any, array -any, containers -any
-    main-is: BenchmarkCombinators.hs
+    main-is: MainBenchCombinators.hs
     buildable: True
     extensions: CPP
     hs-source-dirs: src
