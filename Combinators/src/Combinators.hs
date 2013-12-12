@@ -12,14 +12,28 @@
 --
 -----------------------------------------------------------------------------
 
-module Combinators (module X) where
-import Combinators.Variable as X
-import Combinators.Term as X
-import Combinators.Combinator as X
-import Combinators.CombinatorBasis as X
-import Combinators.Lambda as X
-import Combinators.Properties as X
-import Combinators.CombLambda as X
-import Combinators.CombGenerator as X
+module Combinators (
+    module Combinators.Variable
+    ,module Combinators.BinaryTree
+    ,module Combinators.Reduction
+    ,module Combinators.Combinator
+    ,module Combinators.CombinatorBasis
+    ,module Combinators.Lambda
+    ,module Combinators.Properties
+    ,module Combinators.CombLambda
+    ,module Combinators.CombGenerator
+)
+
+where
+
+import Combinators.Variable
+import Combinators.BinaryTree
+import Combinators.Reduction
+import Combinators.Combinator
+import Combinators.CombinatorBasis
+import Combinators.Lambda
+import Combinators.Properties
+import Combinators.CombLambda
+import Combinators.CombGenerator
 
 

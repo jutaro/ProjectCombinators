@@ -15,7 +15,8 @@
 
 module Combinators.CombLambda where
 
-import Combinators.Term
+-- import Combinators.BinaryTree
+import Combinators.Reduction
 import Combinators.Lambda
 import Combinators.Combinator
 import Combinators.Variable
@@ -34,8 +35,7 @@ reductToLambda vars term = foldr (\v t -> LAbst v :@: t) (combToLambda'' term) v
                                 show (combName c)
 
 combToLambda :: Variable v => CTerm basis v -> LTerm v
-combToLambda = reduceIt normalOrder . combToLambda
-
+combToLambda = reduceIt nullContext NormalOrder . combToLambda
 
 class Basis b v => BracketAbstract b v where
     bracketAbstract :: LTerm v -> CTerm b v

@@ -1,5 +1,5 @@
+{-# LANGUAGE EmptyDataDecls, MultiParamTypeClasses, FlexibleInstances, FlexibleContexts, StandaloneDeriving, GADTs #-}
 {-# OPTIONS_GHC -fno-warn-unused-do-bind -fno-warn-orphans #-}
-{-# LANGUAGE EmptyDataDecls, MultiParamTypeClasses, FlexibleInstances, StandaloneDeriving, GADTs #-}
 -----------------------------------------------------------------------------
 --
 -- Module      :  Combinators
@@ -51,16 +51,17 @@ module Combinators.Combinator (
     applyStrategy,
     applyCombinator,
     normalOrderReduction,
-    strReduction,
+--    strReduction,
 
  ) where
 
 import Combinators.Variable
-import Combinators.Term
+import Combinators.BinaryTree
+import Combinators.Reduction
 
 import Data.List (nub)
 import Data.Maybe (isJust)
-import Control.Monad (liftM)
+import Control.Monad (MonadPlus(..), liftM)
 
 import Text.Parsec.String (Parser)
 import qualified Text.PrettyPrint as PP
@@ -96,8 +97,11 @@ instance (Variable v, Basis basis v) => BinaryTree (CTerm basis v) where
     decompose _ = Nothing
     tl @@ tr = tl :@ tr
 
--- Bind application to the left.
-infixl 5 :@
+instance (Variable v, Basis basis v) => Term (CTerm basis v) where
+    isTerminal (Var _)          = True
+    isTerminal (Const _)        = True
+    isTerminal _                = False
+
 
 -- | A 'Basis' defines the primitive combinators.
 --
@@ -356,29 +360,67 @@ weakHeadReduction t =
 -----------------------------------------------------------------------------
 -- * Normal order reduction
 
--- | A strategy takes a 'TermZipper', and returns 'Just' a 'TermZipper',
--- when it finds a new position.
---
--- Otherwise return 'Nothing'
 
-instance (Variable v, Basis basis v) => Term (CTerm basis v) where
-    reduceOnce' strategy zipper =
-        case applyStrategy strategy zipper of
-            Just (zipper',redex) -> Left (applyCombinator (zipper',redex))
-            Nothing -> Right zipper
+-- | A strategy fixes the order of reduction.
+-- It takes a term in zipper form (see below), and returns the zipper in a form with just the
+-- next head to be reduced selected, or Nothing if no further reduction selection is possible
+type CStrategy t = BTZipper t -> Maybe (BTZipper t)
+
+normalOrder :: (Term t, BinaryTree t) => CStrategy t
+normalOrder = \ zipper ->
+    let res = mplus (down zipper) (up zipper)
+    in --trace ("normalOrderStrategy from: " ++ show (zipSelected zipper) ++
+       --         " to: " ++ case res of Nothing -> show res; Just z -> show (zipSelected z) ) $
+       res
+  where
+    down zipper' = case zipDownLeft' zipper' of
+                    Nothing -> zipDownRight' zipper'
+                    Just z -> Just z
+    up zipper' = case zipUpLeft zipper' of
+                    Nothing -> case zipUpRight zipper' of
+                                Nothing -> Nothing
+                                Just z' -> zipDownRight' z'
+                    Just z -> up z
+
+-- | Select the left child if it is not a terminal.
+--
+zipDownLeft' ::  (Term t, BinaryTree t) => BTZipper t -> Maybe (BTZipper t)
+zipDownLeft' zipper = case decompose (zipSelected zipper) of
+    Just (l,r) | not (isTerminal l) ->
+      Just BTZipper{zipSelected = l,
+                      zipAnchestors = Right r : zipAnchestors zipper}
+    _ -> Nothing
+
+-- | Select the right child if it is not a terminal.
+--
+zipDownRight' ::  BinaryTree t => BTZipper t -> Maybe (BTZipper t)
+zipDownRight' zipper = case decompose (zipSelected zipper) of
+    Just (l,r) | not (isLeaf r) ->
+      Just BTZipper{zipSelected = r,
+                      zipAnchestors = Left l : zipAnchestors zipper}
+    _ -> Nothing
+
+
+
+instance (Variable v, Basis basis v) => Reduction (CTerm basis v) NormalOrder NullContext where
+    reduceOnce' _strategy zipper = case applyStrategy normalOrder zipper of
+                                    Just (zipper',redex) -> return (Left (applyCombinator (zipper',redex)))
+                                    Nothing -> return (Right zipper)
     -- ^ One step reduction. Returns Left t if possible, or Right t with the original term,
     --   if no reduction was possible
-    isTerminal (Var _)          = True
-    isTerminal (Const _)        = True
-    isTerminal _                = False
+    reduce' strategy zipper = do
+        r <- reduceOnce' strategy zipper
+        case r of
+            Left zipper' ->  reduce' strategy zipper'
+            Right zipper' -> return (Just zipper')
 
 
 -- | Applying a strategy means to test if a redex is at the current position.
 -- If the current position has no redex, apply the strategy to select a new position,
 -- and retry if its a redex.
 applyStrategy :: (Variable v, Basis basis v) =>
-         Strategy (CTerm basis v) ->  TermZipper (CTerm basis v) ->
-            Maybe (TermZipper (CTerm basis v), Redex basis v)
+         CStrategy (CTerm basis v) ->  BTZipper (CTerm basis v) ->
+            Maybe (BTZipper (CTerm basis v), Redex basis v)
 applyStrategy strategy zipper =
     case redex (zipSelected zipper) of
          Just r ->  Just (zipper,r)
@@ -390,8 +432,8 @@ applyStrategy strategy zipper =
 
 -- | Apply the Combinator comb on the term list
 applyCombinator :: Basis basis v =>
-                (TermZipper (CTerm basis v), (Combinator basis v, [CTerm basis v]))
-                -> TermZipper (CTerm basis v)
+                (BTZipper (CTerm basis v), (Combinator basis v, [CTerm basis v]))
+                -> BTZipper (CTerm basis v)
 applyCombinator (zipper',(comb,args)) =
     let replaced = foldr (\ (var,arg) term -> substitute var arg term)
                             (combReduct comb)
@@ -400,14 +442,14 @@ applyCombinator (zipper',(comb,args)) =
                                     then replaced
                                     else foldl (:@) replaced (drop (primArity comb) args)}
 
-
 -- | Normal order reduction for a term.
 --
 --  This is not guaranteed to terminate.
-normalOrderReduction :: (Show v, Basis basis v) => CTerm basis v -> CTerm basis v
-normalOrderReduction = reduceIt normalOrder
+normalOrderReduction :: Basis basis v => CTerm basis v -> CTerm basis v
+normalOrderReduction = reduceIt nullContext NormalOrder
 
+{-
 -- | Takes a string, parses it, applies normalOrderReduction and prints the result.
 strReduction :: String -> String
 strReduction = pp . normalOrderReduction . parseKS
-
+-}

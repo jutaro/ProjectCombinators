@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances, GADTs, StandaloneDeriving, FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances, GADTs, StandaloneDeriving, FlexibleContexts, MultiParamTypeClasses #-}
 -----------------------------------------------------------------------------
 --
 -- Module      :  Combinators.Lambda
@@ -16,14 +16,15 @@
 module Combinators.Lambda (
     LTerm(..),
     parseLambda,
-    reduceLambda,
+    -- reduceLambda,
     occurs,
     freeVars,
     isClosed
 ) where
 
 import Combinators.Variable
-import Combinators.Term
+import Combinators.BinaryTree
+import Combinators.Reduction
 
 import Text.Parsec.String (Parser)
 import qualified Text.PrettyPrint as PP
@@ -59,6 +60,12 @@ instance Variable v => BinaryTree (LTerm v) where
 -- Bind application to the left.
 infixl 5 :@:
 
+instance Variable v => Term (LTerm v) where
+    isTerminal (LVar _)         = True
+    isTerminal (LAbst _)        = True
+    isTerminal (LVar _ :@: _r)  = True
+    isTerminal (LAbst _ :@: _r) = True
+    isTerminal _                = False
 -----------------------------------------------------------------------------
 -- * Priniting and parsing
 
@@ -179,41 +186,20 @@ redex (((LAbst v) :@: b) :@: c) = Just (v,b,c)
 redex _ = Nothing
 
 
-instance Variable v => Term (LTerm v) where
-    reduceOnce' strategy zipper = {- trace ("reduceOnce'" ++ show (zipSelected zipper)) $ -}
-        case applyStrategy strategy zipper of
-            Just (zipper',redex) -> Left (reduceBeta zipper' redex)
-            Nothing -> Right zipper
-
-    isTerminal (LVar _)         = True
-    isTerminal (LAbst _)        = True
-    isTerminal (LVar _ :@: _r)  = True
-    isTerminal (LAbst _ :@: _r) = True
-    isTerminal _                = False
+instance Variable v => Reduction (LTerm v) NormalOrder NullContext where
+    reduceOnce' strategy zipper = undefined
 
     -- ^ One step reduction. Returns Left t if possible, or Right t with the original term,
     --   if no reduction was possible
 
--- | Applying a strategy means to test if a redex is at the current position.
--- If the current position has no redex, use the strategy to select a new position,
--- and retry if its a redex.
-applyStrategy :: Strategy (LTerm v) ->  TermZipper (LTerm v) ->
-            Maybe (TermZipper (LTerm v), Redex v)
-applyStrategy strategy zipper =
-    case redex (zipSelected zipper) of
-         Just r ->  Just (zipper,r)
-         Nothing -> case strategy zipper of
-            Nothing -> Nothing
-            Just zipper' -> applyStrategy strategy zipper'
 
-
-reduceBeta :: TermZipper (LTerm v) -> Redex v -> TermZipper (LTerm v)
+reduceBeta :: BTZipper (LTerm v) -> Redex v -> BTZipper (LTerm v)
 reduceBeta tz (v,b,c) = tz{zipSelected=substitutel v c b}
 
 
 -- | Takes a string, parses it, applies normalOrderReduction and prints the result.
 reduceLambda :: String -> String
-reduceLambda = pp . reduceIt normalOrder . parseLambda
+reduceLambda = pp . reduceIt nullContext NormalOrder . parseLambda
 
 -----------------------------------------------------------------------------
 -- * Substitution

@@ -154,23 +154,23 @@ testZipIsNotRoot =  assertBool "testZipIsNotRoot"
 
 -- ** Testing
 
-instance Arbitrary (TermZipper (CTerm IKS VarString)) where
+instance Arbitrary (BTZipper (CTerm IKS VarString)) where
     arbitrary = do
         term <- arbitrary
         elements (zipEnum (zipper term))
 
 -- | A root is a root
-prop_zipRoot :: TermZipper (CTerm IKS VarString) -> Bool
+prop_zipRoot :: BTZipper (CTerm IKS VarString) -> Bool
 prop_zipRoot m = zipIsRoot (zipRoot m)
 
 -- | up after down is identity
-prop_upDown1 :: TermZipper (CTerm IKS VarString) -> Bool
+prop_upDown1 :: BTZipper (CTerm IKS VarString) -> Bool
 prop_upDown1 zip' = case zipSelected zip' of
                     _ :@ _ -> zip' == (fromJust . zipUp . fromJust . zipDownLeft) zip'
                     _ -> True
 
 -- | down after up is identity, when the position is recovered
-prop_upDown2 ::  TermZipper (CTerm IKS VarString) -> Bool
+prop_upDown2 ::  BTZipper (CTerm IKS VarString) -> Bool
 prop_upDown2 zip' = case zipAnchestors zip' of
                     []          -> True
                     Left _ : _  -> zip' == (fromJust . zipDownRight . fromJust . zipUp) zip'

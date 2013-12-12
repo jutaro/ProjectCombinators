@@ -17,7 +17,7 @@ module Combinators.CombGenerator where
 
 import Combinators.Combinator
 import Combinators.Variable
-import Combinators.Term
+import Combinators.BinaryTree
 
 import Data.Array.Unboxed
 import Control.Monad (replicateM)
