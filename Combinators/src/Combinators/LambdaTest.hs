@@ -50,8 +50,8 @@ testLambda = [testProperty "prop_printParse" prop_printParse
 
 testReduction1 :: Assertion
 testReduction1 =
-    parseLambda "y y y" @=? (reduceIt nullContext NormalOrder . parseLambda) "(\\x.x x) y y"
+    parseLambda "y y y" @=? (reduceIt nullContext NormalForm . parseLambda) "(\\x.x x) y y"
 
 testReduction2 :: Assertion
 testReduction2 =
-    parseLambda "\\x.x" @=? (reduceIt nullContext NormalOrder . parseLambda) "(\\f.f \\x.x) \\s.s s"
+    parseLambda "\\x.x" @=? (reduceIt nullContext NormalForm . parseLambda) "(\\f.f \\x.x) \\s.s s"

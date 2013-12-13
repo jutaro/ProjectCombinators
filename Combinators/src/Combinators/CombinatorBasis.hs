@@ -22,15 +22,15 @@ data IBCWK
 
 iIBCWK, bIBCWK, cIBCWK, kIBCWK, wIBCWK :: Variable v => Combinator IBCWK v
 
-iIBCWK = Combinator "I" [varString "__x"] (Var (varString "__x"))
-bIBCWK = Combinator "B" [varString "__x",varString "__y",varString "__z"]
-            (Var (varString "__x") :@ (Var (varString "__y") :@ Var (varString "__z")))
-cIBCWK = Combinator "C" [varString "__x",varString "__y",varString "__z"]
-            ((Var (varString "__x") :@ Var (varString "__z")) :@ Var (varString "__y"))
-kIBCWK = Combinator "K" [varString "__x", varString "__y"]
-            (Var (varString "__x"))
-wIBCWK = Combinator "W" [varString "__x", varString "__y"]
-            (Var (varString "__x") :@ Var (varString"__y") :@ Var (varString "__y"))
+iIBCWK = Combinator "I" [varString "_u"] (Var (varString "_u"))
+bIBCWK = Combinator "B" [varString "_u",varString "_v",varString "_w"]
+            (Var (varString "_u") :@ (Var (varString "_v") :@ Var (varString "_w")))
+cIBCWK = Combinator "C" [varString "_u",varString "_v",varString "_w"]
+            ((Var (varString "_u") :@ Var (varString "_w")) :@ Var (varString "_v"))
+kIBCWK = Combinator "K" [varString "_u", varString "_v"]
+            (Var (varString "_u"))
+wIBCWK = Combinator "W" [varString "_u", varString "_v"]
+            (Var (varString "_u") :@ Var (varString"_v") :@ Var (varString "_v"))
 
 instance Variable v => Basis IBCWK v where
     primCombs = [iIBCWK, bIBCWK, cIBCWK, kIBCWK, wIBCWK]
@@ -54,11 +54,11 @@ parseIBCWK = parse :: String -> CTerm IBCWK VarString
 data IKS
 
 iIKS, kIKS, sIKS :: Variable v => Combinator IKS v
-iIKS = Combinator "I" [varString "__x"] (Var (varString "__x"))
-kIKS = Combinator "K" [varString "__x", varString "__y"] (Var (varString "__x"))
-sIKS = Combinator "S" [varString "__x", varString "__y", varString"__z"]
-            (Var (varString "__x") :@ Var (varString"__z") :@
-            (Var (varString "__y") :@ Var (varString "__z")))
+iIKS = Combinator "I" [varString "_u"] (Var (varString "_u"))
+kIKS = Combinator "K" [varString "_u", varString "_v"] (Var (varString "_u"))
+sIKS = Combinator "S" [varString "_u", varString "_v", varString"_w"]
+            (Var (varString "_u") :@ Var (varString"_w") :@
+            (Var (varString "_v") :@ Var (varString "_w")))
 
 instance Variable v => Basis IKS v where
     primCombs = [iIKS,kIKS,sIKS]

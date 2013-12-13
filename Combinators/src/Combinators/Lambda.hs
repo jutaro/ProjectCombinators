@@ -16,7 +16,7 @@
 module Combinators.Lambda (
     LTerm(..),
     parseLambda,
-    -- reduceLambda,
+    reduceLambda,
     occurs,
     freeVars,
     isClosed
@@ -30,6 +30,7 @@ import Text.Parsec.String (Parser)
 import qualified Text.PrettyPrint as PP
 import qualified Text.Parsec as PA
 import Data.List (delete)
+import Data.Maybe (fromJust)
 
 -----------------------------------------------------------------------------
 -- * Basic types
@@ -147,15 +148,6 @@ parsePart = do
 -----------------------------------------------------------------------------
 -- * Properties
 
--- | The substitution of a variable "var" with a term "replace" in the matched term
---   Returns the resulting term.
-substitutel :: v -> LTerm v -> LTerm v -> LTerm v
-substitutel var n (LVar v) | v == var          = n
-                           | otherwise        = LVar v
-substitutel var n (LAbst v :@: t) | v == var   = LAbst v :@: t
-                                  | otherwise = LAbst v :@: substitutel var n t
-substitutel var n (x :@: y)                   = substitutel var n x :@: substitutel var n y
-substitutel _ _ (LAbst _)                     = error "Lambda>>substitutel: Lonely LAbst"
 
 -- | Does variable v occurst in the term?
 occurs :: v -> LTerm v -> Bool
@@ -173,34 +165,71 @@ freeVars (LAbst n) = error $ "CombLambda>>freeVars: Lonely Abstraction " ++ show
 isClosed :: LTerm v -> Bool
 isClosed = null . freeVars
 
+-----------------------------------------------------------------------------
+-- * Substitution
+
+-- | The substitution of a variable "var" with a term "replace" in the matched term
+--   Returns the resulting term.
+substitutel :: v -> LTerm v -> LTerm v -> LTerm v
+substitutel var n (LVar v) | v == var          = n
+                           | otherwise        = LVar v
+substitutel var n (LAbst v :@: t) | v == var   = LAbst v :@: t
+                                  | otherwise = LAbst v :@: substitutel var n t
+substitutel var n (x :@: y)                   = substitutel var n x :@: substitutel var n y
+substitutel _ _ (LAbst _)                     = error "Lambda>>substitutel: Lonely LAbst"
 
 -----------------------------------------------------------------------------
 -- * Reduction
 
--- | Type, which means (\\v.t1) t2
-type Redex v = (v,LTerm v, LTerm v)
+reduceOnce'' :: (Reduction (LTerm v) s c) =>
+                    s -> BTZipper (LTerm v) -> c (Maybe (BTZipper (LTerm v)))
+reduceOnce'' s zipper =
+    case zipSelected zipper of
+        (((LAbst v) :@: b) :@: c) | LVar v == c -> return (Just $ zipper {zipSelected = b})
+                            --theta redex
+                       | otherwise -> return (Just $ zipper {zipSelected = substitutel v b c})
+                            --beta redex
+        (LAbst x) :@: _t -> do
+            r <- reduceOnce' s (fromJust $ zipDownRight zipper)
+            case r of
+                Just t' -> return (Just $ zipper {zipSelected = (LAbst x) :@: zipSelected t'})
+                Nothing -> return Nothing
+        tl :@: tr -> do
+            r1 <- reduceOnce' s (fromJust $ zipDownLeft zipper)
+            case r1 of
+                Just tl' -> return (Just $ zipper {zipSelected = zipSelected tl' :@: tr})
+                Nothing -> do
+                    r2 <- reduceOnce' s  (fromJust $ zipDownRight zipper)
+                    case r2 of
+                        Nothing -> return Nothing
+                        Just tr' -> return (Just $ zipper {zipSelected = tl :@: zipSelected tr'})
+        (LVar _) -> return $ Nothing
+        (LAbst _ ) -> error $ "Lambda>>reduceOnce': Lonely Abstraction "
 
--- | Returns a redex, if the given term matches
-redex :: LTerm v -> Maybe (Redex v)
-redex (((LAbst v) :@: b) :@: c) = Just (v,b,c)
-redex _ = Nothing
+instance Variable v => Reduction (LTerm v) HeadNormalForm NullContext where
+    reduce' strategy zipper = do
+        r <- reduceOnce' strategy zipper
+        case r of
+            Just zipper' ->  reduce' strategy zipper'
+            Nothing -> return (Just zipper)
+    reduceOnce'  = reduceOnce''
 
+instance Variable v => Reduction (LTerm v) NormalForm NullContext where
+    reduce' strategy zipper = do
+        r <- reduceOnce' strategy zipper
+        case r of
+            Just zipper' ->  reduce' strategy zipper'
+            Nothing -> case goUp zipper of
+                            Nothing -> return (Just zipper)
+                            Just z ->  reduce' strategy z
+    reduceOnce'  = reduceOnce''
 
-instance Variable v => Reduction (LTerm v) NormalOrder NullContext where
-    reduceOnce' strategy zipper = undefined
-
-    -- ^ One step reduction. Returns Left t if possible, or Right t with the original term,
-    --   if no reduction was possible
-
-
-reduceBeta :: BTZipper (LTerm v) -> Redex v -> BTZipper (LTerm v)
-reduceBeta tz (v,b,c) = tz{zipSelected=substitutel v c b}
-
+-----------------------------------------------------------------------------
+-- * Convenience
 
 -- | Takes a string, parses it, applies normalOrderReduction and prints the result.
 reduceLambda :: String -> String
-reduceLambda = pp . reduceIt nullContext NormalOrder . parseLambda
+reduceLambda = pp . reduceIt nullContext HeadNormalForm . parseLambda
 
------------------------------------------------------------------------------
--- * Substitution
+
 

@@ -14,7 +14,8 @@
 -----------------------------------------------------------------------------
 
 module Combinators.Reduction (
-    NormalOrder(..),
+    NormalForm(..),
+    HeadNormalForm(..),
     Strategy,
     Reduction (..),
     ReductionContext(..),
@@ -38,9 +39,13 @@ import Data.Functor.Identity
 -- | Instances of this class represent an evaluation strategy
 class Strategy s
 
--- | Normal order is weak head reduction
-data NormalOrder = NormalOrder
-instance Strategy NormalOrder
+-- | Normal form means reduction of all redexes
+data NormalForm = NormalForm
+instance Strategy NormalForm
+
+-- | Head normal form means reduction of all head redexes
+data HeadNormalForm = HeadNormalForm
+instance Strategy HeadNormalForm
 
 -----------------------------------------------------------------------------
 -- * Reduction context
@@ -71,7 +76,10 @@ class (BinaryTree t , PP t, Strategy s, ReductionContext c) => Reduction t s c w
     -- ^ The transitive closure of reduceOnce. Returns Just t if reduction was possible,
     -- or Nothing in case an infinie reduction was detected, which depends on the implementation
     -- ^ Constructs a tree from its left and right subparts
-    reduceOnce' :: s -> BTZipper t -> c (Either (BTZipper t) (BTZipper t))
+    reduceOnce' :: s -> BTZipper t -> c (Maybe (BTZipper t))
+    -- ^ One step reduction. Returns Left t if possible, or Right t with the original term,
+    --   if no reduction was possible
+
 
 --  This is not guaranteed to terminate.
 reduceCont :: Reduction t s c => s -> t -> c (Maybe t)
@@ -93,13 +101,13 @@ reduceIt c s t = case reduce c s t of
                         Nothing -> error "Term>>reduceIt: Nontermination detected?"
 
 --
-reduceOnceCont ::  Reduction t s c => s -> t -> c (Either t t)
+reduceOnceCont ::  Reduction t s c => s -> t -> c (Maybe t)
 reduceOnceCont s t = do
     r <- reduceOnce' s (zipper t)
     case r of
-        Left t' -> return (Left (unzipper t'))
-        Right t' -> return (Right (unzipper t'))
+        Just t' -> return (Just (unzipper t'))
+        Nothing -> return Nothing
 
 --  This is not guaranteed to terminate.
-reduceOnce :: forall c s t a. Reduction t s c =>  c a -> s -> t -> (Either t t)
-reduceOnce _c strategy t = (runContext :: c (Either t t) -> (Either t t)) (reduceOnceCont strategy t)
+reduceOnce :: forall c s t a. Reduction t s c =>  c a -> s -> t -> Maybe t
+reduceOnce _c strategy t = (runContext :: c (Maybe t) -> (Maybe t)) (reduceOnceCont strategy t)

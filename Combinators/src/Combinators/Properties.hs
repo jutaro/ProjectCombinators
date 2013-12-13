@@ -24,9 +24,9 @@ import Combinators.Variable
 
 -- | A term t is in weak normal form, iff M contains no redexes.
 _isWeakNormal :: Basis basis v => CTerm basis v -> Bool
-_isWeakNormal t = case reduceOnce nullContext NormalOrder t of
-                    Left _ -> False
-                    Right _ -> True -- term not changed, so no redex
+_isWeakNormal t = case reduceOnce nullContext HeadNormalForm t of
+                    Just _ -> False
+                    Nothing -> True -- term not changed, so no redex
 
 -- | Is this weak extensional equality?
 -- TODO

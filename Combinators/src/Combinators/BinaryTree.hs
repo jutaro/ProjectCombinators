@@ -163,5 +163,11 @@ zipperGetPath z = reverse (zipperGetPath' [] (reverse (zipAnchestors z)))
     zipperGetPath' accu (Right _term: [])   = 0:accu
     zipperGetPath' accu (Right _term: rest) = zipperGetPath' accu rest
 
+goUp :: BinaryTree t => BTZipper t -> Maybe (BTZipper t)
+goUp z = case zipUpLeft z of
+            Nothing -> case zipUpRight z of
+                        Nothing -> Nothing
+                        Just z' -> zipDownRight z'
+            Just z -> goUp z
 
 

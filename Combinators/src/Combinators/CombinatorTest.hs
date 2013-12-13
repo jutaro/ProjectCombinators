@@ -94,19 +94,6 @@ testRedex :: Assertion
 testRedex =   assertBool "testRedex"
     (redex (Const iIKS :@ Var "x" :@ Var "y") == Just (iIKS,[Var "x", Var "y"]))
 
--- examples
-testOneStepHeadReduction :: Assertion
-testOneStepHeadReduction =
-    Left (Var "x" :@ Var "y") @=? oneStepHeadReduction (Const iIKS :@ Var "x" :@ Var "y")
-testOneStepHeadReduction2 :: Assertion
-testOneStepHeadReduction2 =
-     Left (((Var "a" :@ Var "c") :@ (Var "b" :@ Var "c")) :@ Const kIKS) @=?
-     oneStepHeadReduction (Const sIKS :@ Var "a" :@ Var "b" :@ Var "c" :@ Const kIKS)
-
--- example
-testWeakHeadReduction :: Assertion
-testWeakHeadReduction =
-    Var "x" @=? weakHeadReduction (Const sIKS :@ Const kIKS :@ Const kIKS :@ Var "x")
 
 -- example
 testZipTerm :: Assertion
@@ -248,15 +235,12 @@ testLanguage = [testCase "testSubterm" testSubterm,
                     testCase "testSubstitute" testSubstitute,
                     testCase "testLeftAssociated" testLeftAssociated,
                     testCase "testRedex" testRedex,
-                    testCase "testOneStepHeadReduction" testOneStepHeadReduction,
-                    testCase "testOneStepHeadReduction2" testOneStepHeadReduction2,
-                    testCase "testWeakHeadReduction" testWeakHeadReduction,
                     testCase "testZipTerm" testZipTerm,
                     testCase "testZipMove1" testZipMove1,
                     testCase "testZipMove2" testZipMove2,
                     testCase "testZipRoot" testZipRoot,
                     testCase "testZipIsRoot" testZipIsRoot,
-                    testCase "testZipIsNotRoot" testZipIsNotRoot,
+                    testCase "testZipIsNotRoot" testZipIsNotRoot    ,
                     testProperty "prop_zipRoot" prop_zipRoot,
                     testProperty "prop_upDown1" prop_upDown1,
                     testProperty "prop_upDown2" prop_upDown2,
