@@ -41,7 +41,7 @@ testPp = assertBool "pp"
 -- example
 testParse :: Assertion
 testParse = assertBool "parse"
-    (pp (parse "S K (K v)" :: CTerm IKS VarString) == "S K (K v)")
+    ((show . pp) (parse "S K (K v)" :: CTerm IKS VarString) == "S K (K v)")
 
 -- ** Testing
 
@@ -55,7 +55,7 @@ instance Arbitrary (CTerm IKS VarString) where
 
 --  For any term: print and parse give the original term
 prop_printParse :: CTerm IKS VarString -> Bool
-prop_printParse term = term == parseIKS (pp term)
+prop_printParse term = term == parseIKS ((show . pp) term)
 
 -----------------------------------------------------------------------------
 -- * Subterms

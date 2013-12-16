@@ -40,13 +40,22 @@ instance Arbitrary (LTerm VarString) where
 prop_printParse :: LTerm VarString -> Bool
 prop_printParse term = --trace ("\n\n" ++ ppl term ++ "\n" ++ ppl (parseLambda (ppl term))
                        --     ++ "\n\n" ++ show term ++ "\n" ++ show (parseLambda (ppl term))) $
-                            term == parseLambda (pp term)
+                            term == parseLambda ((show . pp) term)
 
 testLambda :: [Test]
 testLambda = [testProperty "prop_printParse" prop_printParse
              , testCase "testReduction1" testReduction1
              , testCase "testReduction2" testReduction2
-              ]
+             , testCase "testReduction3" testReduction3
+             , testCase "testReduction4" testReduction4
+             , testCase "testReduction5" testReduction5
+             , testCase "testReduction6" testReduction6
+             , testCase "testReduction7" testReduction7
+             , testCase "testReduction8" testReduction8
+             , testCase "testReduction9" testReduction9
+             , testCase "testReduction10" testReduction10
+             , testCase "testReduction11" testReduction11
+             ]
 
 testReduction1 :: Assertion
 testReduction1 =
@@ -54,4 +63,49 @@ testReduction1 =
 
 testReduction2 :: Assertion
 testReduction2 =
-    parseLambda "\\x.x" @=? (reduceIt tracingContext NormalForm . parseLambda) "(\\f.f \\x.x) \\s.s s"
+    parseLambda "\\s.s s" @=? (reduceIt tracingContext NormalForm . parseLambda) "(\\f.f) (\\x.x) \\s.s s"
+
+testReduction3 :: Assertion
+testReduction3 =
+    parseLambda "\\t. (y y y)" @=? (reduceIt tracingContext NormalForm . parseLambda) "\\t.(\\x.x x) y y"
+
+testReduction4 :: Assertion
+testReduction4 =
+    parseLambda "y (y y y)" @=? (reduceIt tracingContext NormalForm . parseLambda)
+                "(\\x. x) y ((\\x.x x) y y)"
+
+testReduction5 :: Assertion
+testReduction5 =
+    parseLambda "x" @=? (reduceIt tracingContext NormalForm . parseLambda)
+                "(\\t. x) y"
+
+-- | two tie theta
+testReduction6 :: Assertion
+testReduction6 =
+    parseLambda "y" @=? (reduceIt tracingContext NormalForm . parseLambda)
+                "(\\x.(\\x.y) x) x"
+
+testReduction7 :: Assertion
+testReduction7 =
+    parseLambda "x x (x x (x x)) \\z.z z" @=? (reduceIt tracingContext NormalForm . parseLambda)
+                "(\\x. (\\y. y(y y)) x) (x x) (\\z.z z)"
+
+testReduction8 :: Assertion
+testReduction8 =
+    parseLambda "\\y.x x y (x x y)" @=? (reduceIt tracingContext NormalForm . parseLambda)
+                "(\\ z y. x x y (x x y)) x"
+
+testReduction9 :: Assertion
+testReduction9 =
+    parseLambda "y (v v)" @=? (reduceIt tracingContext NormalForm . parseLambda)
+                "(\\x. x) y ((\\z. z z) v)"
+
+testReduction10 :: Assertion
+testReduction10 =
+    parseLambda "y" @=? (reduceIt tracingContext NormalForm . parseLambda)
+                "(\\x. x y) \\z. z"
+
+testReduction11 :: Assertion
+testReduction11 =
+    parseLambda "x" @=? (reduceIt tracingContext NormalForm . parseLambda)
+                "(\\x. x) ((\\y z. z(y y z))(\\y z. z(y y z))x)"

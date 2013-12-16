@@ -64,6 +64,7 @@ data LTerm v where
       (:@:) :: Variable v => LTerm v -> LTerm v -> LTerm v
 
 deriving instance Eq (LTerm v)
+deriving instance Ord (LTerm v)
 deriving instance Show (LTerm v)
 
 instance Variable v => BinaryTree (LTerm v) where
@@ -84,13 +85,13 @@ instance Variable v => Term (LTerm v) where
 -- ** Priniting and parsing
 
 instance Variable v => PP (LTerm v) where
-    pp = ppl
+    pp = pp' True True []
 
 -- | Pretty prints a lambda term.
 --
 -- Avoids printing outer parenthesis and left parenthesis.
-ppl :: Variable v => LTerm v -> String
-ppl t = PP.render (pp' True True [] t)
+--ppl :: Variable v => LTerm v -> String
+--ppl t = PP.render (pp' True True [] t)
 
 -- | The first Boolean value is true if it is a left subterm.
 -- The second Boolean Term is true, if it  is a right most subterm
@@ -110,7 +111,9 @@ pp' _ _ _ (LAbst _)                         = error "Lambda>>pp': Lonely LAbst"
 -- | Takes a String and returns a Term
 --
 parseLambda :: String -> LTerm VarString
-parseLambda = parse
+parseLambda str = let res = parse str
+                  in -- trace (show res)
+                        res
 
 -- | Throws an error, when the String can't be parsed
 parse ::  Variable v => String -> LTerm v
@@ -184,17 +187,17 @@ isClosed = null . freeVars
 -- | The substitution of a variable "var" with a term "replace" in the matched term
 --   Returns the resulting term.
 substitutel :: v -> LTerm v -> LTerm v -> LTerm v
-substitutel var n (LVar v) | v == var          = n
-                           | otherwise        = LVar v
-substitutel var n (LAbst v :@: t) | v == var   = LAbst v :@: t
-                                  | otherwise = LAbst v :@: substitutel var n t
-substitutel var n (x :@: y)                   = substitutel var n x :@: substitutel var n y
-substitutel _ _ (LAbst _)                     = error "Lambda>>substitutel: Lonely LAbst"
+substitutel var replace (LVar v) | v == var          = replace
+                                 | otherwise        = LVar v
+substitutel var replace (LAbst v :@: t) | v == var   = LAbst v :@: t
+                                        | otherwise = LAbst v :@: substitutel var replace t
+substitutel var replace (x :@: y)                   = substitutel var replace x :@: substitutel var replace y
+substitutel _ _ (LAbst _)                           = error "Lambda>>substitutel: Lonely LAbst"
 
 -----------------------------------------------------------------------------
 -- ** Reduction
 
-instance (Strategy s, Variable v, ReductionContext c)  => Reduction (LTerm v) s c where
+instance (Strategy s, Variable v, ReductionContext c (LTerm v))  => Reduction (LTerm v) s c where
     reduceOnce' s zipper =
         case zipSelected zipper of
             (((LAbst v) :@: b) :@: c) | LVar v == c -> return (Just $ zipper {zipSelected = b})
@@ -223,7 +226,7 @@ instance (Strategy s, Variable v, ReductionContext c)  => Reduction (LTerm v) s 
 
 -- | Takes a string, parses it, applies normalOrderReduction and prints the result.
 reduceLambda :: String -> String
-reduceLambda = pp . reduceIt tracingContext HeadNormalForm . parseLambda
+reduceLambda = show . pp . reduceIt tracingContext HeadNormalForm . parseLambda
 
 
 

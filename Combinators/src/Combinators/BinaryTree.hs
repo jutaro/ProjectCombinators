@@ -14,6 +14,7 @@
 module Combinators.BinaryTree where
 
 import Data.Maybe (isNothing)
+import Text.PrettyPrint (Doc)
 
 -----------------------------------------------------------------------------
 -- * Binary tree class and a Zipper on it
@@ -29,8 +30,9 @@ class BinaryTree t where
     isLeaf = isNothing . decompose
 
 class PP t where
-    pp :: t -> String
-
+    pp :: t -> Doc
+    pps :: t -> ShowS
+    pps = shows . pp
 
 -- | preorderLeaves
 preorderLeaves :: BinaryTree t => t -> [t]

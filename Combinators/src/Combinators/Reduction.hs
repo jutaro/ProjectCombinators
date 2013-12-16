@@ -44,6 +44,7 @@ import Data.Functor.Identity
 import Control.Monad (liftM)
 import Control.Monad.Trans.State
 import Debug.Trace (trace)
+import qualified Data.Set as Set (member, insert, empty, Set)
 
 -----------------------------------------------------------------------------
 -- ** Abstract Reduction, Reduction strategies and reduction contexts
@@ -110,13 +111,13 @@ instance Strategy HeadNormalForm where
 -----------------------------------------------------------------------------
 -- ** Reduction Context
 
-class Monad c => ReductionContext c where
-    runContext :: c a -> a
-    startReduction :: (BinaryTree t, PP t) => (BTZipper t) -> c (BTZipper t)
+class (Monad c, BinaryTree t, PP t) => ReductionContext c t where
+    runContext :: c (Maybe t) -> Maybe t
+    startReduction :: () => (BTZipper t) -> c (BTZipper t)
     stepReduction :: (BinaryTree t, PP t) => (BTZipper t) -> c (Maybe (BTZipper t))
     stopReduction :: (BinaryTree t, PP t) => (BTZipper t) -> c (BTZipper t)
 
-instance ReductionContext Identity where
+instance (PP t, BinaryTree t) => ReductionContext Identity t where
     runContext (Identity a) = a
     startReduction tz = return tz
     stepReduction tz = return (Just tz)
@@ -127,25 +128,47 @@ type NullContext = Identity
 nullContext :: Identity (Maybe a)
 nullContext = Identity Nothing
 
-instance ReductionContext TracingContext  where
+maxcount :: Int
+maxcount = 1000
+
+instance (PP t, BinaryTree t, Ord t) => ReductionContext (TracingContext t) t  where
     runContext tracing =
-        let (a, (s,_i)) = runState tracing ("",0)
-        in  trace s a
+        let (a, (s,_i,_l)) = runState tracing (id,0,Set.empty)
+        in  trace (take 3000 (s "")) a
     startReduction tz = do
         let t = unzipper tz
-        modify (\(log,count) -> (log ++ "\nstart: " ++ pp t, count))
+        modify (\(log,count,l) -> (log . showString "\nstart: " . pps t, count,Set.insert t l))
         return tz
     stepReduction tz =  do
         let t = unzipper tz
-        modify (\(log,count) -> (log ++ "\nstep" ++ show (count + 1) ++ ": "
-                                ++ pp t, count+1))
-        return (Just tz)
+        (_,count,l) <- get
+        if Set.member t l
+            then do
+                modify (\(log,count,l) ->
+                    (log . showString "\nCycle detected: " . pps t,
+                    count + 1,
+                    l))
+                return Nothing
+            else if count + 1 > maxcount
+                then do
+                    modify (\(log,count,l) ->
+                        (log . showString "\nMax reductions reached: " . shows count,
+                        count + 1,
+                        l))
+                    return Nothing
+                else do
+                    modify (\(log,count,l) ->
+                        (log . showString "\nstep" . shows (count + 1) . showString ": " . pps t,
+                        count+1,
+                        Set.insert t l
+                        ))
+                    return (Just tz)
     stopReduction tz = do
         return tz
 
-type TracingContext = State (String,Int)
+type TracingContext t = State (ShowS,Int,Set.Set t)
 
-tracingContext :: TracingContext (Maybe (BTZipper a))
+tracingContext :: TracingContext t (Maybe t)
 tracingContext = state (\ s -> (Nothing,s))
 
 -----------------------------------------------------------------------------
@@ -157,7 +180,7 @@ class BinaryTree t => Term t where
     -- ^ This information is used for reduction
 
 -- | A term is a binary tree, which can be reduced one or many times.
-class (ReductionContext c, BinaryTree t , PP t, Strategy s) => Reduction t s c where
+class (ReductionContext c t, BinaryTree t , PP t, Strategy s) => Reduction t s c where
     reduceOnce' :: s -> BTZipper t -> c (Maybe (BTZipper t))
     -- ^ One step reduction. Returns Left t if possible, or Right t with the original term,
     --   if no reduction was possible
@@ -172,12 +195,12 @@ reduceCont s t = do
         Nothing -> return $ Nothing
 
 --  This is not guaranteed to terminate.
-reduce :: forall t s c a. Reduction t s c => c a -> s -> t -> Maybe t
-reduce _c s t =  (runContext :: c (Maybe t) -> Maybe t)  (reduceCont s t)
+reduce :: forall c t s. (ReductionContext c t, Reduction t s c) => c (Maybe t) -> s -> t -> Maybe t
+reduce _c s t =  (runContext :: c (Maybe t) -> Maybe t) (reduceCont s t)
 
 
 --  This is not guaranteed to terminate.
-reduceIt :: Reduction t s c => c a -> s -> t -> t
+reduceIt :: (ReductionContext c t, Reduction t s c) => c (Maybe t) -> s -> t -> t
 reduceIt c s t = case reduce c s t of
                         Just t' -> t'
                         Nothing -> error "Term>>reduceIt: Nontermination detected?"
@@ -191,5 +214,5 @@ reduceOnceCont s t = do
         Nothing -> return Nothing
 
 --  This is not guaranteed to terminate.
-reduceOnce :: forall c s t a. Reduction t s c =>  c a -> s -> t -> Maybe t
+reduceOnce :: forall t s c . Reduction t s c =>  c (Maybe t) -> s -> t -> Maybe t
 reduceOnce _c strategy t = (runContext :: c (Maybe t) -> (Maybe t)) (reduceOnceCont strategy t)

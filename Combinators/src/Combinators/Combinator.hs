@@ -61,7 +61,7 @@ import Control.Monad (liftM)
 import Text.Parsec.String (Parser)
 import qualified Text.PrettyPrint as PP
 import qualified Text.Parsec as PA
-import Debug.Trace (trace)
+-- import Debug.Trace (trace)
 
 -- (inspired by Katalin Bimbo's book).
 
@@ -87,6 +87,7 @@ data CTerm basis v where
     (:@) :: ! (CTerm basis v) -> ! (CTerm basis v) -> CTerm basis v
 
 deriving instance Eq v => Eq (CTerm basis v)
+deriving instance Ord v => Ord (CTerm basis v)
 deriving instance Show v => Show (CTerm basis v)
 
 instance (Variable v, Basis basis v) => BinaryTree (CTerm basis v) where
@@ -126,6 +127,8 @@ data Combinator basis v where
          combReduct :: ! (CTerm basis v)} -> Combinator basis v
 
 deriving instance Eq (Combinator basis v)
+deriving instance Ord (Combinator basis v)
+
 
 instance Show (Combinator basis v) where
     show = combName
@@ -165,13 +168,13 @@ parseKS = parse
 -- ** Priniting and parsing
 
 instance Basis basis v => PP (CTerm basis v) where
-    pp = ppC
+    pp = pp' False
 
 -- | Pretty prints a term.
 --
 -- Avoids printing outer parenthesis and left parenthesis.
-ppC :: Basis basis v => CTerm basis v -> String
-ppC t = PP.render (pp' False t)
+--ppC :: Basis basis v => CTerm basis v -> String
+--ppC t = PP.render (pp' False t)
 
 pp' :: Basis basis v => Bool -> CTerm basis v -> PP.Doc
 pp' _ (Const c)     = PP.text (combName c)
@@ -317,7 +320,8 @@ redex = redex' []
 isRedex :: Basis basis v => CTerm basis v -> Bool
 isRedex = isJust . redex
 
-instance (Variable v, Basis basis v, Strategy s) => Reduction (CTerm basis v) s NullContext where
+instance (ReductionContext c (CTerm basis v),Variable v, Basis basis v, Strategy s) =>
+                Reduction (CTerm basis v) s c where
     reduceOnce' s zipper =
         case redex (zipSelected zipper) of
              Just redex ->  return (Just (applyCombinator (zipper,redex)))

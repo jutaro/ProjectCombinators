@@ -29,7 +29,7 @@ import qualified Text.Parsec as PA ((<?>), noneOf, many, lower,spaces)
 --
 -- * compared for equality
 
-class (Show v, Eq v) => Variable v where
+class (Show v, Eq v, Ord v) => Variable v where
     varPp     :: v -> String
         -- ^ needs to start with lower case character
     varParse  :: Parser v
