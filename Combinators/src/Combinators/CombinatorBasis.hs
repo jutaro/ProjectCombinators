@@ -5,8 +5,6 @@
 -- Copyright   :  (c) 2012 Jürgen Nicklisch-Franken
 -- License     :  AllRightsReserved
 --
--- | Alternative basis for Combinatory logic
---
 -----------------------------------------------------------------------------
 
 module Combinators.CombinatorBasis where
@@ -16,6 +14,11 @@ import Combinators.Variable
 import Combinators.CombLambda
 import Combinators.Lambda
 
+-----------------------------------------------------------------------------
+-- * Alternative bases for Combinatory logic
+-----------------------------------------------------------------------------
+
+-- ** IBCWK
 
 -- | Definition of the combinators for the IBCWK Basis
 data IBCWK
@@ -49,7 +52,7 @@ instance Variable v => BracketAbstract IBCWK v where
 parseIBCWK :: String -> CTerm IBCWK VarString
 parseIBCWK = parse :: String -> CTerm IBCWK VarString
 
--- * Definition of the combinators for the IKS Basis
+-- ** IKS
 
 data IKS
 

@@ -4,11 +4,6 @@
 -- Copyright   :
 -- License     :  AllRightsReserved
 --
--- Maintainer  :
--- Stability   :
--- Portability :
---
--- | Properties of combinators
 --
 -----------------------------------------------------------------------------
 
@@ -18,9 +13,10 @@ import Combinators.Combinator
 import Combinators.Reduction
 import Combinators.Variable
 
-
 -----------------------------------------------------------------------------
 -- * Properties of combinators
+-----------------------------------------------------------------------------
+
 
 -- | A term t is in weak normal form, iff M contains no redexes.
 _isWeakNormal :: Basis basis v => CTerm basis v -> Bool

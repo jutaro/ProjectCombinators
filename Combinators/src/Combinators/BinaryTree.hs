@@ -9,13 +9,15 @@
 -- Stability   :  provisional
 -- Portability :
 --
--- | Abstract Reduction System
---
 -----------------------------------------------------------------------------
 
 module Combinators.BinaryTree where
 
 import Data.Maybe (isNothing)
+
+-----------------------------------------------------------------------------
+-- * Binary tree class and a Zipper on it
+-----------------------------------------------------------------------------
 
 -- | A binary tree may have a right or left subpart
 class BinaryTree t where
@@ -59,7 +61,7 @@ leafSize t = case decompose t of
                 Just (l,r) -> leafSize l + leafSize r
 
 -----------------------------------------------------------------------------
--- * Zipper
+-- ** Zipper
 -----------------------------------------------------------------------------
 
 -- | This is a zipper for a term, which is a structure which carries a term and a

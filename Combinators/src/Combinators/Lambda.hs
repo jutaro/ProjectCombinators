@@ -9,17 +9,26 @@
 -- Stability   :
 -- Portability :
 --
--- | Lambda calculus implementation
---
 -----------------------------------------------------------------------------
 
 module Combinators.Lambda (
+-----------------------------------------------------------------------------
+-- * Lambda calculus implementation
+-----------------------------------------------------------------------------
+-----------------------------------------------------------------------------
+-- ** LTerm type
     LTerm(..),
+-----------------------------------------------------------------------------
+-- ** Priniting and parsing
     parseLambda,
-    reduceLambda,
+-----------------------------------------------------------------------------
+-- ** Properties
     occurs,
     freeVars,
-    isClosed
+    isClosed,
+-----------------------------------------------------------------------------
+-- ** Convenience
+    reduceLambda
 ) where
 
 import Combinators.Variable
@@ -33,7 +42,11 @@ import Data.List (delete)
 import Data.Maybe (fromJust)
 
 -----------------------------------------------------------------------------
--- * Basic types
+-- * Lambda calculus implementation
+-----------------------------------------------------------------------------
+
+-----------------------------------------------------------------------------
+-- ** LTerm type
 
 -- | A 'Term' in (untyped) lambda calculus is either
 --
@@ -68,7 +81,7 @@ instance Variable v => Term (LTerm v) where
     isTerminal (LAbst _ :@: _r) = True
     isTerminal _                = False
 -----------------------------------------------------------------------------
--- * Priniting and parsing
+-- ** Priniting and parsing
 
 instance Variable v => PP (LTerm v) where
     pp = ppl
@@ -146,7 +159,7 @@ parsePart = do
     PA.<?> "parsePart Nothing"
 
 -----------------------------------------------------------------------------
--- * Properties
+-- ** Properties
 
 
 -- | Does variable v occurst in the term?
@@ -166,7 +179,7 @@ isClosed :: LTerm v -> Bool
 isClosed = null . freeVars
 
 -----------------------------------------------------------------------------
--- * Substitution
+-- ** Substitution
 
 -- | The substitution of a variable "var" with a term "replace" in the matched term
 --   Returns the resulting term.
@@ -179,57 +192,38 @@ substitutel var n (x :@: y)                   = substitutel var n x :@: substitu
 substitutel _ _ (LAbst _)                     = error "Lambda>>substitutel: Lonely LAbst"
 
 -----------------------------------------------------------------------------
--- * Reduction
+-- ** Reduction
 
-reduceOnce'' :: (Reduction (LTerm v) s c) =>
-                    s -> BTZipper (LTerm v) -> c (Maybe (BTZipper (LTerm v)))
-reduceOnce'' s zipper =
-    case zipSelected zipper of
-        (((LAbst v) :@: b) :@: c) | LVar v == c -> return (Just $ zipper {zipSelected = b})
-                            --theta redex
-                       | otherwise -> return (Just $ zipper {zipSelected = substitutel v b c})
-                            --beta redex
-        (LAbst x) :@: _t -> do
-            r <- reduceOnce' s (fromJust $ zipDownRight zipper)
-            case r of
-                Just t' -> return (Just $ zipper {zipSelected = (LAbst x) :@: zipSelected t'})
-                Nothing -> return Nothing
-        tl :@: tr -> do
-            r1 <- reduceOnce' s (fromJust $ zipDownLeft zipper)
-            case r1 of
-                Just tl' -> return (Just $ zipper {zipSelected = zipSelected tl' :@: tr})
-                Nothing -> do
-                    r2 <- reduceOnce' s  (fromJust $ zipDownRight zipper)
-                    case r2 of
-                        Nothing -> return Nothing
-                        Just tr' -> return (Just $ zipper {zipSelected = tl :@: zipSelected tr'})
-        (LVar _) -> return $ Nothing
-        (LAbst _ ) -> error $ "Lambda>>reduceOnce': Lonely Abstraction "
-
-instance Variable v => Reduction (LTerm v) HeadNormalForm NullContext where
-    reduce' strategy zipper = do
-        r <- reduceOnce' strategy zipper
-        case r of
-            Just zipper' ->  reduce' strategy zipper'
-            Nothing -> return (Just zipper)
-    reduceOnce'  = reduceOnce''
-
-instance Variable v => Reduction (LTerm v) NormalForm NullContext where
-    reduce' strategy zipper = do
-        r <- reduceOnce' strategy zipper
-        case r of
-            Just zipper' ->  reduce' strategy zipper'
-            Nothing -> case goUp zipper of
-                            Nothing -> return (Just zipper)
-                            Just z ->  reduce' strategy z
-    reduceOnce'  = reduceOnce''
+instance (Strategy s, Variable v, ReductionContext c)  => Reduction (LTerm v) s c where
+    reduceOnce' s zipper =
+        case zipSelected zipper of
+            (((LAbst v) :@: b) :@: c) | LVar v == c -> return (Just $ zipper {zipSelected = b})
+                                --theta redex
+                           | otherwise -> return (Just $ zipper {zipSelected = substitutel v c b})
+                                --beta redex
+            (LAbst x) :@: _t -> do
+                r <- reduceOnce' s (fromJust $ zipDownRight zipper)
+                case r of
+                    Just t' -> return (Just $ zipper {zipSelected = (LAbst x) :@: zipSelected t'})
+                    Nothing -> return Nothing
+            tl :@: tr -> do
+                r1 <- reduceOnce' s (fromJust $ zipDownLeft zipper)
+                case r1 of
+                    Just tl' -> return (Just $ zipper {zipSelected = zipSelected tl' :@: tr})
+                    Nothing -> do
+                        r2 <- reduceOnce' s  (fromJust $ zipDownRight zipper)
+                        case r2 of
+                            Nothing -> return Nothing
+                            Just tr' -> return (Just $ zipper {zipSelected = tl :@: zipSelected tr'})
+            (LVar _) -> return $ Nothing
+            (LAbst _ ) -> error $ "Lambda>>reduceOnce': Lonely Abstraction "
 
 -----------------------------------------------------------------------------
--- * Convenience
+-- ** Convenience
 
 -- | Takes a string, parses it, applies normalOrderReduction and prints the result.
 reduceLambda :: String -> String
-reduceLambda = pp . reduceIt nullContext HeadNormalForm . parseLambda
+reduceLambda = pp . reduceIt tracingContext HeadNormalForm . parseLambda
 
 
 

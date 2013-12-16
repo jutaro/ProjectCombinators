@@ -24,7 +24,7 @@ import Test.Framework (Test)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Control.Monad (liftM2, liftM)
 import Test.HUnit ((@=?), Assertion)
--- import Test.Framework.Providers.HUnit (testCase)
+import Test.Framework.Providers.HUnit (testCase)
 
 
 -- ** Testing
@@ -44,14 +44,14 @@ prop_printParse term = --trace ("\n\n" ++ ppl term ++ "\n" ++ ppl (parseLambda (
 
 testLambda :: [Test]
 testLambda = [testProperty "prop_printParse" prop_printParse
-             -- , testCase "testReduction1" testReduction1
-             -- , testCase "testReduction2" testReduction2
+             , testCase "testReduction1" testReduction1
+             , testCase "testReduction2" testReduction2
               ]
 
 testReduction1 :: Assertion
 testReduction1 =
-    parseLambda "y y y" @=? (reduceIt nullContext NormalForm . parseLambda) "(\\x.x x) y y"
+    parseLambda "y y y" @=? (reduceIt tracingContext NormalForm . parseLambda) "(\\x.x x) y y"
 
 testReduction2 :: Assertion
 testReduction2 =
-    parseLambda "\\x.x" @=? (reduceIt nullContext NormalForm . parseLambda) "(\\f.f \\x.x) \\s.s s"
+    parseLambda "\\x.x" @=? (reduceIt tracingContext NormalForm . parseLambda) "(\\f.f \\x.x) \\s.s s"

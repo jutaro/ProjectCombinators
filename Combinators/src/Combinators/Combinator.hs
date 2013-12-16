@@ -6,46 +6,45 @@
 -- Copyright   :  (c) 2012 Jürgen Nicklisch-Franken
 -- License     :  AllRightsReserved
 --
--- | Combinatory logic implementation inspired by Katalin Bimbo's book.
---
 -----------------------------------------------------------------------------
 
 module Combinators.Combinator (
 -----------------------------------------------------------------------------
--- * Basic types
+-- * Combinatory logic
+-----------------------------------------------------------------------------
+-- ** Basic types
     CTerm(..),
     Basis(..),
     Combinator(..),
     primArity,
 -----------------------------------------------------------------------------
--- * Basis
--- ** IKS
+-- ** Basis KS
     KS,
     kKS,
     sKS,
     parseKS,
 -----------------------------------------------------------------------------
--- * Priniting and parsing
+-- ** Priniting and parsing
     pp,
     pprint,
     parse,
     parseErr,
 -----------------------------------------------------------------------------
--- * Subterms
+-- ** Subterms
     subterm,
     allSubterms,
 -----------------------------------------------------------------------------
--- * Substitution
+-- ** Substitution
     substitute,
     leftAssociated,
     isApp,
 -----------------------------------------------------------------------------
--- * Reduction
+-- ** Reduction
     Redex,
     redex,
     isRedex,
 -----------------------------------------------------------------------------
--- * Convenience
+-- ** Convenience
     normalOrderReduction,
 --    strReduction,
 
@@ -64,9 +63,10 @@ import qualified Text.PrettyPrint as PP
 import qualified Text.Parsec as PA
 import Debug.Trace (trace)
 
+-- (inspired by Katalin Bimbo's book).
 
 -----------------------------------------------------------------------------
--- * Basic types
+-- ** Basic types
 
 -- | A 'Term' in combinatory logic is either
 --
@@ -136,7 +136,7 @@ primArity :: Combinator basis v -> Int
 primArity = length . combVars
 
 -----------------------------------------------------------------------------
--- * Basis
+-- ** Basis
 
 -- ** IKS
 
@@ -150,10 +150,10 @@ data KS
 
 -- | Definition of the combinators for the IKS Basis
 kKS, sKS :: Variable v => Combinator KS v
-kKS = Combinator "K" [varString "u", varString "v"] (Var (varString "u"))
-sKS = Combinator "S" [varString "u", varString "v", varString"w"]
-            (Var (varString "u") :@ Var (varString"w") :@
-            (Var (varString "v") :@ Var (varString "w")))
+kKS = Combinator "K" [varString "_u", varString "_v"] (Var (varString "_u"))
+sKS = Combinator "S" [varString "_u", varString "_v", varString"_w"]
+            (Var (varString "_u") :@ Var (varString "_w") :@
+            (Var (varString "_v") :@ Var (varString "_w")))
 
 instance Variable v => Basis KS v where
     primCombs = [kKS,sKS]
@@ -162,9 +162,7 @@ parseKS :: String -> CTerm KS VarString
 parseKS = parse
 
 -----------------------------------------------------------------------------
--- * Variables
------------------------------------------------------------------------------
--- * Priniting and parsing
+-- ** Priniting and parsing
 
 instance Basis basis v => PP (CTerm basis v) where
     pp = ppC
@@ -190,7 +188,6 @@ pprint' _ (Var v)       = varPp v
 pprint' False (l :@ r)  = pprint' False l ++ " " ++  pprint' True r
 pprint' True (l :@ r)   = "("  ++ pprint' False l ++ " " ++  pprint' True r ++ ")"
 
-
 -- | Takes a String and returns a Term
 --
 -- Throws an error, when the String can't be parsed
@@ -203,9 +200,6 @@ parseErr ::  Basis b v => String -> Either String (CTerm b v)
 parseErr str = case parse' str of
                 Left err    -> Left (show err)
                 Right term  -> Right term
-
-
-
 
 parse' :: Basis b v => String -> Either PA.ParseError (CTerm b v)
 parse' = PA.parse (parseTerm Nothing) ""
@@ -256,9 +250,8 @@ parseTerm' (Just l') =
         PA.option (l' :@ l) $ PA.try (parseTerm (Just (l' :@ l)))
     PA.<?> "parseTerm'"
 
-
 -----------------------------------------------------------------------------
--- * Subterms
+-- ** Subterms
 
 -- | Is the first term a subterm of the second
 subterm :: Basis basis v => CTerm basis v -> CTerm basis v -> Bool
@@ -275,9 +268,8 @@ allSubterms (Var a1) = [Var a1]
 allSubterms (Const a1) = [Const a1]
 allSubterms (a1 :@ a2) = (a1 :@ a2) : nub (allSubterms a1 ++ allSubterms a2)
 
-
 -----------------------------------------------------------------------------
--- * Substitution
+-- ** Substitution
 
 -- | The substitution of a variable "var" with a term "replace" in the matched term
 --
@@ -288,7 +280,7 @@ substitute var replace (Var x) | x == var = replace
                                | otherwise = Var x
 substitute var replace (x :@ y) = substitute var replace x :@ substitute var replace y
 
--- * Helpers
+-- ** Helpers
 
 -- | Is this combinator left associated (can be written without parenthesis in standard notation)
 leftAssociated :: (Basis basis v, Variable v) => CTerm basis v -> Bool
@@ -302,7 +294,7 @@ isApp (_ :@ _) = True
 isApp _ = False
 
 -----------------------------------------------------------------------------
--- * Reduction
+-- ** Reduction
 
 type Redex basis v = (Combinator basis v, [CTerm basis v])
 
@@ -325,43 +317,23 @@ redex = redex' []
 isRedex :: Basis basis v => CTerm basis v -> Bool
 isRedex = isJust . redex
 
-instance (Variable v, Basis basis v) => Reduction (CTerm basis v) HeadNormalForm NullContext where
-    reduce' strategy zipper = do
-        r <- reduceOnce' strategy zipper
-        case r of
-            Just zipper' ->  reduce' strategy zipper'
-            Nothing -> return (Just zipper)
-    reduceOnce'  = reduceOnce''
-
-instance (Variable v, Basis basis v) => Reduction (CTerm basis v) NormalForm NullContext where
-    reduce' strategy zipper = do
-        r <- reduceOnce' strategy zipper
-        case r of
-            Just zipper' ->  trace ((pp . unzipper) zipper') $
-                                reduce' strategy zipper'
-            Nothing -> case goUp zipper of
-                            Nothing -> return (Just zipper)
-                            Just z ->  reduce' strategy z
-    reduceOnce'  = reduceOnce''
-
-reduceOnce'' :: (Basis basis v, Reduction (CTerm basis v) s c) =>
-                    s -> BTZipper (CTerm basis v) -> c (Maybe (BTZipper (CTerm basis v)))
-reduceOnce'' s zipper =
-    case redex (zipSelected zipper) of
-         Just redex ->  return (Just (applyCombinator (zipper,redex)))
-         Nothing ->
-            case zipSelected zipper of
-                Const _ -> return Nothing
-                Var _ -> return Nothing
-                (l :@ r) -> do
-                    r1 <- reduceOnce' s (fromJust $ zipDownLeft zipper)
-                    case r1 of
-                        Just l' -> return (Just $ zipper {zipSelected = zipSelected l' :@ r})
-                        Nothing -> do
-                            r2 <- reduceOnce' s (fromJust $ zipDownRight zipper)
-                            case r2 of
-                                Nothing -> return Nothing
-                                Just r' -> return (Just $ zipper {zipSelected =  l :@ zipSelected r'})
+instance (Variable v, Basis basis v, Strategy s) => Reduction (CTerm basis v) s NullContext where
+    reduceOnce' s zipper =
+        case redex (zipSelected zipper) of
+             Just redex ->  return (Just (applyCombinator (zipper,redex)))
+             Nothing ->
+                case zipSelected zipper of
+                    Const _ -> return Nothing
+                    Var _ -> return Nothing
+                    (l :@ r) -> do
+                        r1 <- reduceOnce' s (fromJust $ zipDownLeft zipper)
+                        case r1 of
+                            Just l' -> return (Just $ zipper {zipSelected = zipSelected l' :@ r})
+                            Nothing -> do
+                                r2 <- reduceOnce' s (fromJust $ zipDownRight zipper)
+                                case r2 of
+                                    Nothing -> return Nothing
+                                    Just r' -> return (Just $ zipper {zipSelected =  l :@ zipSelected r'})
 
 -- | Apply the Combinator comb on the term list
 applyCombinator :: Basis basis v =>
@@ -376,7 +348,7 @@ applyCombinator (zipper,(comb,args)) =
                                     else foldl (:@) replaced (drop (primArity comb) args)}
 
 -----------------------------------------------------------------------------
--- * Convenience
+-- ** Convenience
 
 -- | Normal order reduction for a term.
 --

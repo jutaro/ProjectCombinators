@@ -9,14 +9,17 @@
 -- Stability   :  provisional
 -- Portability :
 --
--- |
---
 -----------------------------------------------------------------------------
 
 module Combinators.Variable where
 
 import Text.Parsec.String (Parser)
 import qualified Text.Parsec as PA ((<?>), noneOf, many, lower,spaces)
+
+-----------------------------------------------------------------------------
+-- * Variables
+-----------------------------------------------------------------------------
+
 
 -- | A variable can be
 --
@@ -32,6 +35,9 @@ class (Show v, Eq v) => Variable v where
     varParse  :: Parser v
     varString :: VarString -> v -- Fixme with state
     varGen    :: Int -> [v]
+
+-----------------------------------------------------------------------------
+-- ** VarString
 
 -- | The representation of variables as strings
 type VarString = String

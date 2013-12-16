@@ -9,8 +9,6 @@
 -- Stability   :  provisional
 -- Portability :
 --
--- | Generation/Enumerations of Combinators with rank, unrank and length functions
---
 -----------------------------------------------------------------------------
 
 module Combinators.CombGenerator where
@@ -22,6 +20,10 @@ import Combinators.BinaryTree
 import Data.Array.Unboxed
 import Control.Monad (replicateM)
 import Data.List (findIndex, foldl')
+
+-----------------------------------------------------------------------------
+-- * Generation/Enumerations of Combinators with rank, unrank and length functions
+-----------------------------------------------------------------------------
 
 -- | Produces a list of catalan numbers
 catalans :: [Integer]

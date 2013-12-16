@@ -60,14 +60,14 @@ prop_CombGen n =  if n >= 1 && n < 10
 prop_RankGen :: CTerm KS VarString -> Bool
 prop_RankGen t =  let ind = rankComb t
                   in trace ("prop_RankGen t: " ++ show t ++ " index: " ++ show ind) $
-                    if ind > 1000000
+                    if ind > 10000
                             then True
                             else head (take 1 (drop (fromIntegral (ind-1)) genCombs)) == t
 
 prop_RankUnrank :: CTerm KS VarString -> Bool
 prop_RankUnrank t = let ind = rankComb t
                     in trace ("prop_RankUnrank t: " ++ show t ++ " index: " ++ show ind) $
-                        if ind > 10000000000
+                        if ind > 100000000
                             then True
                             else unrankComb ind == t
 
