@@ -127,23 +127,25 @@ type NullContext = Identity
 nullContext :: Identity (Maybe a)
 nullContext = Identity Nothing
 
-instance ReductionContext TracingContext where
+instance ReductionContext TracingContext  where
     runContext tracing =
         let (a, (s,_i)) = runState tracing ("",0)
         in  trace s a
     startReduction tz = do
-        modify (\(log,count) -> (log ++ "\nstart: " ++ pp (unzipper tz), count))
+        let t = unzipper tz
+        modify (\(log,count) -> (log ++ "\nstart: " ++ pp t, count))
         return tz
     stepReduction tz =  do
+        let t = unzipper tz
         modify (\(log,count) -> (log ++ "\nstep" ++ show (count + 1) ++ ": "
-                                ++ pp (unzipper tz), count+1))
+                                ++ pp t, count+1))
         return (Just tz)
     stopReduction tz = do
         return tz
 
 type TracingContext = State (String,Int)
 
-tracingContext :: TracingContext (Maybe a)
+tracingContext :: TracingContext (Maybe (BTZipper a))
 tracingContext = state (\ s -> (Nothing,s))
 
 -----------------------------------------------------------------------------
