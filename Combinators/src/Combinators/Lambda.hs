@@ -1,4 +1,5 @@
-{-# LANGUAGE FlexibleInstances, GADTs, StandaloneDeriving, FlexibleContexts, MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances, GADTs, StandaloneDeriving, FlexibleContexts, MultiParamTypeClasses,
+      ScopedTypeVariables #-}
 -----------------------------------------------------------------------------
 --
 -- Module      :  Combinators.Lambda
@@ -28,7 +29,11 @@ module Combinators.Lambda (
     isClosed,
 -----------------------------------------------------------------------------
 -- ** Convenience
-    reduceLambda
+    reduceLambda,
+-----------------------------------------------------------------------------
+-- ** De Bruijn indices
+    toLambdaB,
+    fromLambdaB
 ) where
 
 import Combinators.Variable
@@ -40,6 +45,9 @@ import qualified Text.PrettyPrint as PP
 import qualified Text.Parsec as PA
 import Data.List (delete)
 import Data.Maybe (fromJust)
+import qualified Data.List as List
+       (elemIndex, elem, intersect, nub)
+import Debug.Trace (trace)
 
 -----------------------------------------------------------------------------
 -- * Lambda calculus implementation
@@ -60,12 +68,16 @@ import Data.Maybe (fromJust)
 
 data LTerm v where
       LVar :: Variable v => v -> LTerm v
-      LAbst :: Variable v => v -> LTerm v
+      LAbst :: VarString -> LTerm v
       (:@:) :: Variable v => LTerm v -> LTerm v -> LTerm v
 
-deriving instance Eq (LTerm v)
-deriving instance Ord (LTerm v)
 deriving instance Show (LTerm v)
+
+instance Eq (LTerm VarString) where
+    a == b = toLambdaB a == toLambdaB b
+
+instance Ord (LTerm VarString) where
+    a `compare` b = toLambdaB a `compare` toLambdaB b
 
 instance Variable v => BinaryTree (LTerm v) where
     decompose (tl :@: tr) = Just (tl,tr)
@@ -84,7 +96,7 @@ instance Variable v => Term (LTerm v) where
 -----------------------------------------------------------------------------
 -- ** Priniting and parsing
 
-instance Variable v => PP (LTerm v) where
+instance PP (LTerm VarString) where
     pp = pp' True True []
 
 -- | Pretty prints a lambda term.
@@ -96,7 +108,7 @@ instance Variable v => PP (LTerm v) where
 -- | The first Boolean value is true if it is a left subterm.
 -- The second Boolean Term is true, if it  is a right most subterm
 --    (which is closed with brackets anyway)
-pp' :: Bool -> Bool -> [v] -> LTerm v -> PP.Doc
+pp' :: Bool -> Bool -> [VarString] -> LTerm VarString -> PP.Doc
 pp' _ _ _ (LVar v)                          = PP.text (varPp v)
 pp' il rm l ((LAbst v) :@: ((LAbst v') :@: t'))
                                             = pp' il rm (v : l) ((LAbst v') :@: t')
@@ -166,27 +178,34 @@ parsePart = do
 
 
 -- | Does variable v occurst in the term?
-occurs :: v -> LTerm v -> Bool
+occurs :: VarString -> LTerm VarString -> Bool
 occurs v (LVar n) = v == n
-occurs v (LAbst n :@: t) = if v == n then False else occurs n t
+occurs v (LAbst n :@: t) = if v == n then False else occurs v t
 occurs v (l :@: r) = occurs v l || occurs v r
 occurs _v (LAbst n) = error $ "CombLambda>>bracketAbstract: Lonely Abstraction " ++ show n
 
-freeVars :: LTerm v -> [v]
+freeVars :: LTerm VarString -> [VarString]
 freeVars (LVar n) = [n]
 freeVars (LAbst n :@: t) = delete n (freeVars t)
 freeVars (l :@: r) = freeVars l ++ freeVars r
 freeVars (LAbst n) = error $ "CombLambda>>freeVars: Lonely Abstraction " ++ show n
 
-isClosed :: LTerm v -> Bool
+boundVars :: LTerm VarString -> [VarString]
+boundVars (LVar _n) = []
+boundVars (LAbst n :@: t) = n : boundVars t
+boundVars (l :@: r) = boundVars l ++ boundVars r
+boundVars (LAbst n) = error $ "CombLambda>>freeVars: Lonely Abstraction " ++ show n
+
+isClosed :: LTerm VarString -> Bool
 isClosed = null . freeVars
+
 
 -----------------------------------------------------------------------------
 -- ** Substitution
 
 -- | The substitution of a variable "var" with a term "replace" in the matched term
 --   Returns the resulting term.
-substitutel :: v -> LTerm v -> LTerm v -> LTerm v
+substitutel :: VarString -> LTerm VarString -> LTerm VarString -> LTerm VarString
 substitutel var replace (LVar v) | v == var          = replace
                                  | otherwise        = LVar v
 substitutel var replace (LAbst v :@: t) | v == var   = LAbst v :@: t
@@ -194,15 +213,43 @@ substitutel var replace (LAbst v :@: t) | v == var   = LAbst v :@: t
 substitutel var replace (x :@: y)                   = substitutel var replace x :@: substitutel var replace y
 substitutel _ _ (LAbst _)                           = error "Lambda>>substitutel: Lonely LAbst"
 
+-- | Substitution with alpha conversion
+subsititueAlpha  :: VarString -> LTerm VarString -> LTerm VarString -> LTerm VarString
+subsititueAlpha  var replace replaceIn =
+    let freeVars'    = freeVars replace
+        boundVars'   = boundVars replaceIn
+        renamingVars = List.nub $ List.intersect freeVars' boundVars'
+        newVarNames  = foldr (findNewName 0) [] renamingVars
+        replaceIn'   = foldr (renameVar True) replaceIn (zip renamingVars newVarNames)
+    in substitutel var replace replaceIn'
+  where
+    findNewName :: Int -> VarString -> [VarString] -> [VarString]
+    findNewName ind var accu =
+        let proposedVariable =  varString (varPp var ++ show ind)
+        in if List.elem proposedVariable accu ||
+                occurs proposedVariable replace ||
+                occurs proposedVariable replaceIn
+                then findNewName (ind+1) var accu
+                else proposedVariable : accu
+
+renameVar :: Bool -> (VarString,VarString) ->  LTerm VarString -> LTerm VarString
+renameVar _b (old,new) (LVar n) | n == old         = LVar new
+                                | otherwise       = LVar n
+renameVar b (old,new) (LAbst n :@: t) | n == old && b
+                                                  = LAbst new :@: renameVar False (old,new) t
+                                      | otherwise = LAbst n :@: renameVar b (old,new) t
+renameVar b (old,new) (l :@: r)                   = renameVar b (old,new) l :@: renameVar b (old,new) r
+renameVar _b (_old,_new) (LAbst n)                = error $ "CombLambda>>renameVar: Lonely Abstraction " ++ show n
+
 -----------------------------------------------------------------------------
 -- ** Reduction
 
-instance (Strategy s, Variable v, ReductionContext c (LTerm v))  => Reduction (LTerm v) s c where
+instance (Strategy s, ReductionContext c (LTerm VarString))  => Reduction (LTerm VarString) s c where
     reduceOnce' s zipper =
         case zipSelected zipper of
             (((LAbst v) :@: b) :@: c) | LVar v == c -> return (Just $ zipper {zipSelected = b})
                                 --theta redex
-                           | otherwise -> return (Just $ zipper {zipSelected = substitutel v c b})
+                           | otherwise -> return (Just $ zipper {zipSelected = subsititueAlpha v c b})
                                 --beta redex
             (LAbst x) :@: _t -> do
                 r <- reduceOnce' s (fromJust $ zipDownRight zipper)
@@ -228,5 +275,56 @@ instance (Strategy s, Variable v, ReductionContext c (LTerm v))  => Reduction (L
 reduceLambda :: String -> String
 reduceLambda = show . pp . reduceIt instrumentedContext NormalForm . parseLambda
 
+-----------------------------------------------------------------------------
+-- ** With de Bruijn indices
 
+instance PP (LTerm VarInt) where
+    pp = pp . fromLambdaB
+
+deriving instance Eq (LTerm VarInt)
+deriving instance Ord (LTerm VarInt)
+
+toLambdaB :: LTerm VarString -> LTerm VarInt
+toLambdaB = fst . toLambdaB' [] 0
+  where
+    toLambdaB' env freeVarNumber (LVar str) =
+        case List.elemIndex str env of
+            Just i -> (LVar i,freeVarNumber)
+            Nothing -> (LVar (length env + freeVarNumber), freeVarNumber + 1)
+    toLambdaB' env freeVarNumber (LAbst str :@: t) =
+        let (newTerm,newFreeVarNum) = toLambdaB' (str:env) freeVarNumber t
+        in (LAbst str :@: newTerm,newFreeVarNum)
+    toLambdaB' env freeVarNumber (lt :@: rt) =
+        let (l',fvn)  = toLambdaB' env freeVarNumber lt
+            (r',fvn') = toLambdaB' env fvn rt
+        in (l' :@: r', fvn')
+    toLambdaB' _env _freeVarNumber (LAbst n) = error $ "LambdaB>>toLambdaB': Lonely Abstraction " ++ show n
+
+fromLambdaB :: LTerm VarInt -> LTerm VarString
+fromLambdaB = fst . fromLambdaB' [] 0
+  where
+    fromLambdaB' :: [String] -> Int -> LTerm VarInt -> (LTerm VarString,Int)
+    fromLambdaB' env freeVarNumber (LVar ind) =
+        case env !!! ind of
+            Just s -> (LVar s,freeVarNumber)
+            Nothing -> (LVar (nameGen !! (length env + freeVarNumber)), freeVarNumber + 1)
+    fromLambdaB' env freeVarNumber (LAbst str :@: t) =
+        let (newTerm,newFreeVarNum) = fromLambdaB' (str:env) freeVarNumber t
+        in (LAbst str :@: newTerm,newFreeVarNum)
+    fromLambdaB' env freeVarNumber (lt :@: rt) =
+        let (l',fvn) = fromLambdaB' env freeVarNumber lt
+            (r',fvn') = fromLambdaB' env fvn rt
+        in (l' :@: r', fvn')
+    fromLambdaB' _env _freeVarNumber (LAbst n) = error $ "LambdaB>>toLambdaB': Lonely Abstraction " ++ show n
+
+(!!!)                :: [a] -> Int -> Maybe a
+_      !!! n | n < 0 =  Nothing
+[]     !!! _         =  Nothing
+(x:_)  !!! 0         =  Just x
+(_:xs) !!! n         =  xs !!! (n-1)
+
+{-
+instance (Strategy s, ReductionContext c (LTerm VarInt))  => Reduction (LTerm VarInt) s c where
+    reduceOnce' s zipper =
+-}
 
