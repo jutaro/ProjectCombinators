@@ -26,8 +26,8 @@ module Combinators.Reduction (
     ReductionContext(..),
     NullContext,
     nullContext,
-    TracingContext,
-    tracingContext,
+    InstrumentedContext,
+    instrumentedContext,
 -----------------------------------------------------------------------------
 -- ** Term, and abstract Reduction with convenience functions
     Term(..),
@@ -123,6 +123,8 @@ instance (PP t, BinaryTree t) => ReductionContext Identity t where
     stepReduction tz = return (Just tz)
     stopReduction tz = return tz
 
+-----------------------------------------------------------------------------
+-- *** Null Context
 type NullContext = Identity
 
 nullContext :: Identity (Maybe a)
@@ -131,7 +133,10 @@ nullContext = Identity Nothing
 maxcount :: Int
 maxcount = 1000
 
-instance (PP t, BinaryTree t, Ord t) => ReductionContext (TracingContext t) t  where
+-----------------------------------------------------------------------------
+-- *** Instrumented Context
+
+instance (PP t, BinaryTree t, Ord t) => ReductionContext (InstrumentedContext t) t  where
     runContext tracing =
         let (a, (s,_i,_l)) = runState tracing (id,0,Set.empty)
         in  trace (take 3000 (s "")) a
@@ -166,10 +171,10 @@ instance (PP t, BinaryTree t, Ord t) => ReductionContext (TracingContext t) t  w
     stopReduction tz = do
         return tz
 
-type TracingContext t = State (ShowS,Int,Set.Set t)
+type InstrumentedContext t = State (ShowS,Int,Set.Set t)
 
-tracingContext :: TracingContext t (Maybe t)
-tracingContext = state (\ s -> (Nothing,s))
+instrumentedContext :: InstrumentedContext t (Maybe t)
+instrumentedContext = state (\ s -> (Nothing,s))
 
 -----------------------------------------------------------------------------
 -- ** Term, and abstract Reduction with convenience functions

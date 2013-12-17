@@ -37,7 +37,7 @@ reductToLambda vars term = foldr (\v t -> LAbst v :@: t) (combToLambda'' term) v
                                 show (combName c)
 
 combToLambda :: Variable v => CTerm basis v -> LTerm v
-combToLambda = reduceIt tracingContext NormalForm . combToLambda
+combToLambda = reduceIt instrumentedContext NormalForm . combToLambda
 
 class Basis b v => BracketAbstract b v where
     bracketAbstract :: LTerm v -> CTerm b v

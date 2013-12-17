@@ -59,53 +59,53 @@ testLambda = [testProperty "prop_printParse" prop_printParse
 
 testReduction1 :: Assertion
 testReduction1 =
-    parseLambda "y y y" @=? (reduceIt tracingContext NormalForm . parseLambda) "(\\x.x x) y y"
+    parseLambda "y y y" @=? (reduceIt instrumentedContext NormalForm . parseLambda) "(\\x.x x) y y"
 
 testReduction2 :: Assertion
 testReduction2 =
-    parseLambda "\\s.s s" @=? (reduceIt tracingContext NormalForm . parseLambda) "(\\f.f) (\\x.x) \\s.s s"
+    parseLambda "\\s.s s" @=? (reduceIt instrumentedContext NormalForm . parseLambda) "(\\f.f) (\\x.x) \\s.s s"
 
 testReduction3 :: Assertion
 testReduction3 =
-    parseLambda "\\t. (y y y)" @=? (reduceIt tracingContext NormalForm . parseLambda) "\\t.(\\x.x x) y y"
+    parseLambda "\\t. (y y y)" @=? (reduceIt instrumentedContext NormalForm . parseLambda) "\\t.(\\x.x x) y y"
 
 testReduction4 :: Assertion
 testReduction4 =
-    parseLambda "y (y y y)" @=? (reduceIt tracingContext NormalForm . parseLambda)
+    parseLambda "y (y y y)" @=? (reduceIt instrumentedContext NormalForm . parseLambda)
                 "(\\x. x) y ((\\x.x x) y y)"
 
 testReduction5 :: Assertion
 testReduction5 =
-    parseLambda "x" @=? (reduceIt tracingContext NormalForm . parseLambda)
+    parseLambda "x" @=? (reduceIt instrumentedContext NormalForm . parseLambda)
                 "(\\t. x) y"
 
 -- | two tie theta
 testReduction6 :: Assertion
 testReduction6 =
-    parseLambda "y" @=? (reduceIt tracingContext NormalForm . parseLambda)
+    parseLambda "y" @=? (reduceIt instrumentedContext NormalForm . parseLambda)
                 "(\\x.(\\x.y) x) x"
 
 testReduction7 :: Assertion
 testReduction7 =
-    parseLambda "x x (x x (x x)) \\z.z z" @=? (reduceIt tracingContext NormalForm . parseLambda)
+    parseLambda "x x (x x (x x)) \\z.z z" @=? (reduceIt instrumentedContext NormalForm . parseLambda)
                 "(\\x. (\\y. y(y y)) x) (x x) (\\z.z z)"
 
 testReduction8 :: Assertion
 testReduction8 =
-    parseLambda "\\y.x x y (x x y)" @=? (reduceIt tracingContext NormalForm . parseLambda)
+    parseLambda "\\y.x x y (x x y)" @=? (reduceIt instrumentedContext NormalForm . parseLambda)
                 "(\\ z y. x x y (x x y)) x"
 
 testReduction9 :: Assertion
 testReduction9 =
-    parseLambda "y (v v)" @=? (reduceIt tracingContext NormalForm . parseLambda)
+    parseLambda "y (v v)" @=? (reduceIt instrumentedContext NormalForm . parseLambda)
                 "(\\x. x) y ((\\z. z z) v)"
 
 testReduction10 :: Assertion
 testReduction10 =
-    parseLambda "y" @=? (reduceIt tracingContext NormalForm . parseLambda)
+    parseLambda "y" @=? (reduceIt instrumentedContext NormalForm . parseLambda)
                 "(\\x. x y) \\z. z"
 
 testReduction11 :: Assertion
 testReduction11 =
-    parseLambda "x" @=? (reduceIt tracingContext NormalForm . parseLambda)
+    parseLambda "x" @=? (reduceIt instrumentedContext NormalForm . parseLambda)
                 "(\\x. x) ((\\y z. z(y y z))(\\y z. z(y y z))x)"

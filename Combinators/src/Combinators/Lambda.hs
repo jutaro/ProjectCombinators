@@ -226,7 +226,7 @@ instance (Strategy s, Variable v, ReductionContext c (LTerm v))  => Reduction (L
 
 -- | Takes a string, parses it, applies normalOrderReduction and prints the result.
 reduceLambda :: String -> String
-reduceLambda = show . pp . reduceIt tracingContext HeadNormalForm . parseLambda
+reduceLambda = show . pp . reduceIt instrumentedContext NormalForm . parseLambda
 
 
 
