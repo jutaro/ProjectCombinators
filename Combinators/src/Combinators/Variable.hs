@@ -23,18 +23,10 @@ import qualified Text.Parsec as PA ((<?>), noneOf, many, lower,spaces)
 
 -- | A variable can be
 --
--- * printed
--- * parsed
--- * instantiated from a string representation
---
+-- * shown
 -- * compared for equality
-
+-- * ordered
 class (Show v, Eq v, Ord v) => Variable v where
-    varPp     :: v -> String
-        -- ^ needs to start with lower case character
-    varParse  :: Parser v
-    varString :: VarString -> v -- Fixme with state
---    varGen    :: Int -> [v]
 
 -----------------------------------------------------------------------------
 -- ** VarString
@@ -42,18 +34,18 @@ class (Show v, Eq v, Ord v) => Variable v where
 -- | The representation of variables as strings
 type VarString = String
 
-instance Variable VarString where
-    varPp = id
-    varParse = do
+instance Variable VarString
+
+varPp :: VarString -> String
+varPp = id
+
+varParse :: Parser VarString
+varParse = do
             PA.spaces
             start <- PA.lower
             rest <- PA.many (PA.noneOf " ()\t\n\r\f\v.")
             return (start:rest)
         PA.<?> "varParse for SimpleVar"
-    varString = id
-
-nameGen :: [String]
-nameGen = [ c: n | n <- ("" : map show [1..]), c <- "uvwxyz"]
 
 -----------------------------------------------------------------------------
 -- ** VarIndex
@@ -61,16 +53,10 @@ nameGen = [ c: n | n <- ("" : map show [1..]), c <- "uvwxyz"]
 -- | The representation of variables as de Bruin indices
 type VarInt = Int
 
-instance Variable VarInt where
---    varPp = id
---    varParse = do
---            PA.spaces
---            start <- PA.lower
---            rest <- PA.many (PA.noneOf " ()\t\n\r\f\v.")
---            return (start:rest)
---        PA.<?> "varParse for SimpleVar"
---    varString = id
---    varGen i = map (\i' -> "v_" ++ show i') [1 .. i]
+instance Variable VarInt
 
+nameGen :: [String]
+nameGen = [ c: n | n <- ("" : map show [(1::Int)..]), c <- "uvwxyz"]
 
-
+nameGenFV  :: [String]
+nameGenFV = map (\ s -> s ++ "'") nameGen

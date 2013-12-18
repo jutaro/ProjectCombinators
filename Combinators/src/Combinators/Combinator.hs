@@ -81,31 +81,30 @@ import qualified Text.Parsec as PA
 -- * How to represent variables? Do we prefer Strings or de Bruijn?
 --      we choose to parametrize on the type of variables, which is a something of class Variable
 
-data CTerm basis v where
-    Const :: (Variable v, Basis basis v) => ! (Combinator basis v) -> CTerm basis v
-    Var :: ! v -> CTerm basis v
-    (:@) :: ! (CTerm basis v) -> ! (CTerm basis v) -> CTerm basis v
+data CTerm basis where
+    Const :: Basis basis => ! (Combinator basis) -> CTerm basis
+    Var   :: ! VarString -> CTerm basis
+    (:@)  :: ! (CTerm basis) -> ! (CTerm basis) -> CTerm basis
 
-deriving instance Eq v => Eq (CTerm basis v)
-deriving instance Ord v => Ord (CTerm basis v)
-deriving instance Show v => Show (CTerm basis v)
+deriving instance Eq (CTerm basis)
+deriving instance Ord (CTerm basis)
+deriving instance Show (CTerm basis)
 
-instance (Variable v, Basis basis v) => BinaryTree (CTerm basis v) where
+instance Basis basis => BinaryTree (CTerm basis) where
     decompose (tl :@ tr) = Just (tl,tr)
     decompose _ = Nothing
     tl @@ tr = tl :@ tr
 
-instance (Variable v, Basis basis v) => Term (CTerm basis v) where
+instance Basis basis => Term (CTerm basis) where
     isTerminal (Var _)          = True
     isTerminal (Const _)        = True
     isTerminal _                = False
 
-
 -- | A 'Basis' defines the primitive combinators.
 --
 -- We might add here bracket abstraction?
-class (Variable v) => Basis basis v where
-    primCombs :: [Combinator basis v]
+class Basis basis where
+    primCombs :: [Combinator basis]
 
 -- | A (primitive) combinator belongs to a Basis.
 --
@@ -120,22 +119,21 @@ class (Variable v) => Basis basis v where
 --
 --      * a term, in which the variables will be replaced
 --
-data Combinator basis v where
-    Combinator :: (Basis basis v, Variable v) =>
+data Combinator basis where
+    Combinator :: (Basis basis) =>
         {combName   :: ! String, -- ^ needs to start with upper case character
-         combVars   :: ! [v],
-         combReduct :: ! (CTerm basis v)} -> Combinator basis v
+         combVars   :: ! [VarString],
+         combReduct :: ! (CTerm basis)} -> Combinator basis
 
-deriving instance Eq (Combinator basis v)
-deriving instance Ord (Combinator basis v)
+deriving instance Eq (Combinator basis)
+deriving instance Ord (Combinator basis)
 
-
-instance Show (Combinator basis v) where
+instance Show (Combinator basis) where
     show = combName
 
 -- | The arity of a primitive combinator is defined by the length
 -- of the variables in its axiom
-primArity :: Combinator basis v -> Int
+primArity :: Combinator basis -> Int
 primArity = length . combVars
 
 -----------------------------------------------------------------------------
@@ -152,22 +150,22 @@ primArity = length . combVars
 data KS
 
 -- | Definition of the combinators for the IKS Basis
-kKS, sKS :: Variable v => Combinator KS v
-kKS = Combinator "K" [varString "_u", varString "_v"] (Var (varString "_u"))
-sKS = Combinator "S" [varString "_u", varString "_v", varString"_w"]
-            (Var (varString "_u") :@ Var (varString "_w") :@
-            (Var (varString "_v") :@ Var (varString "_w")))
+kKS, sKS :: Combinator KS
+kKS = Combinator "K" ["_u", "_v"] (Var ("_u"))
+sKS = Combinator "S" ["_u", "_v", "_w"]
+            (Var ("_u") :@ Var ("_w") :@
+            (Var ("_v") :@ Var ("_w")))
 
-instance Variable v => Basis KS v where
+instance Basis KS where
     primCombs = [kKS,sKS]
 
-parseKS :: String -> CTerm KS VarString
+parseKS :: String -> CTerm KS
 parseKS = parse
 
 -----------------------------------------------------------------------------
 -- ** Priniting and parsing
 
-instance Basis basis v => PP (CTerm basis v) where
+instance Basis basis => PP (CTerm basis) where
     pp = pp' False
 
 -- | Pretty prints a term.
@@ -176,16 +174,16 @@ instance Basis basis v => PP (CTerm basis v) where
 --ppC :: Basis basis v => CTerm basis v -> String
 --ppC t = PP.render (pp' False t)
 
-pp' :: Basis basis v => Bool -> CTerm basis v -> PP.Doc
+pp' :: Basis basis => Bool -> CTerm basis -> PP.Doc
 pp' _ (Const c)     = PP.text (combName c)
 pp' _ (Var v)       = PP.text (varPp v)
 pp' False (l :@ r)  = PP.sep [pp' False l, pp' True r]
 pp' True (l :@ r)   = PP.text "("  PP.<> PP.sep [pp' False l, pp' True r] PP.<> PP.text ")"
 
-pprint :: Basis basis v => CTerm basis v -> String
+pprint :: Basis basis => CTerm basis -> String
 pprint = pprint' False
 
-pprint' :: Basis basis v => Bool -> CTerm basis v -> String
+pprint' :: Basis basis => Bool -> CTerm basis -> String
 pprint' _ (Const c)     = combName c
 pprint' _ (Var v)       = varPp v
 pprint' False (l :@ r)  = pprint' False l ++ " " ++  pprint' True r
@@ -194,21 +192,21 @@ pprint' True (l :@ r)   = "("  ++ pprint' False l ++ " " ++  pprint' True r ++ "
 -- | Takes a String and returns a Term
 --
 -- Throws an error, when the String can't be parsed
-parse ::  Basis b v => String -> CTerm b v
+parse ::  Basis b => String -> CTerm b
 parse str = case parse' str of
                 Left err    -> error (show err)
                 Right term  -> term
 
-parseErr ::  Basis b v => String -> Either String (CTerm b v)
+parseErr ::  Basis b => String -> Either String (CTerm b)
 parseErr str = case parse' str of
                 Left err    -> Left (show err)
                 Right term  -> Right term
 
-parse' :: Basis b v => String -> Either PA.ParseError (CTerm b v)
+parse' :: Basis b => String -> Either PA.ParseError (CTerm b)
 parse' = PA.parse (parseTerm Nothing) ""
 
 parseComb, parsePrim, parseVar
-    :: (Basis basis v) => Parser (CTerm basis v)
+    :: (Basis basis) => Parser (CTerm basis)
 parseComb = do
     start <- PA.upper
     rest  <- PA.many (PA.noneOf " ()\t\n\r\f\v")
@@ -221,13 +219,13 @@ parseVar = liftM Var varParse
 
 parsePrim = parseVar PA.<|> parseComb PA.<?> "parsePrim"
 
-parseTerm, parseTerm' :: (Basis basis v) => Maybe (CTerm basis v)
-                                        -> Parser (CTerm basis v)
+parseTerm, parseTerm' :: (Basis basis) => Maybe (CTerm basis)
+                                        -> Parser (CTerm basis)
 parseTerm condL = do
     PA.spaces
     parseTerm' condL
 
-parseLeft :: (Basis basis v) => Parser (CTerm basis v)
+parseLeft :: (Basis basis) => Parser (CTerm basis)
 parseLeft = do
     PA.char '('
     t <- parseTerm Nothing
@@ -257,7 +255,7 @@ parseTerm' (Just l') =
 -- ** Subterms
 
 -- | Is the first term a subterm of the second
-subterm :: Basis basis v => CTerm basis v -> CTerm basis v -> Bool
+subterm :: Basis basis => CTerm basis -> CTerm basis -> Bool
 subterm (Var a1) (Var a2)     | a1 == a2 = True
                               | otherwise = False
 subterm (Const a1) (Const a2) | a1 == a2 = True
@@ -266,7 +264,7 @@ subterm x (a1 :@ a2)          = x == (a1 :@ a2) || subterm x a1 || subterm x a2
 subterm _x _y                 = False
 
 -- | Returns all subterms of a term. Does not return duplicates
-allSubterms :: Basis basis v => CTerm basis v -> [CTerm basis v]
+allSubterms :: Basis basis => CTerm basis -> [CTerm basis]
 allSubterms (Var a1) = [Var a1]
 allSubterms (Const a1) = [Const a1]
 allSubterms (a1 :@ a2) = (a1 :@ a2) : nub (allSubterms a1 ++ allSubterms a2)
@@ -277,7 +275,7 @@ allSubterms (a1 :@ a2) = (a1 :@ a2) : nub (allSubterms a1 ++ allSubterms a2)
 -- | The substitution of a variable "var" with a term "replace" in the matched term
 --
 -- Returns the resulting term.
-substitute :: Basis basis v  => v -> CTerm basis v -> CTerm basis v -> CTerm basis v
+substitute :: Basis basis  => VarString -> CTerm basis -> CTerm basis -> CTerm basis
 substitute _var _replace (Const x) = Const x
 substitute var replace (Var x) | x == var = replace
                                | otherwise = Var x
@@ -286,20 +284,20 @@ substitute var replace (x :@ y) = substitute var replace x :@ substitute var rep
 -- ** Helpers
 
 -- | Is this combinator left associated (can be written without parenthesis in standard notation)
-leftAssociated :: (Basis basis v, Variable v) => CTerm basis v -> Bool
+leftAssociated :: Basis basis => CTerm basis -> Bool
 leftAssociated (Var _x) = True
 leftAssociated (Const _x) = True
 leftAssociated (x :@ y) = leftAssociated x && not (isApp y)
 
 -- | Is this combinator an application
-isApp :: Basis basis v => CTerm basis v -> Bool
+isApp :: Basis basis => CTerm basis -> Bool
 isApp (_ :@ _) = True
 isApp _ = False
 
 -----------------------------------------------------------------------------
 -- ** Reduction
 
-type Redex basis v = (Combinator basis v, [CTerm basis v])
+type Redex basis v = (Combinator basis, [CTerm basis])
 
 -- | A term is a redex,  if
 --      * the head is a primitive combinator
@@ -307,7 +305,7 @@ type Redex basis v = (Combinator basis v, [CTerm basis v])
 --
 --   Returns just a pair of redexHead and redexArgs, when the term is an redex.
 --   Returns Nothing, if the input term is not a redex
-redex :: Basis basis v => CTerm basis v -> Maybe (Redex basis v)
+redex :: Basis basis => CTerm basis -> Maybe (Redex basis v)
 redex = redex' []
   where
     redex' accu (Const c)
@@ -317,11 +315,11 @@ redex = redex' []
     redex' accu (l :@ arg)              = redex' (arg : accu) l
 
 -- | Is this term an redex?
-isRedex :: Basis basis v => CTerm basis v -> Bool
+isRedex :: Basis basis => CTerm basis -> Bool
 isRedex = isJust . redex
 
-instance (ReductionContext c (CTerm basis v),Variable v, Basis basis v, Strategy s) =>
-                Reduction (CTerm basis v) s c where
+instance (ReductionContext c (CTerm basis), Basis basis, Strategy s) =>
+                Reduction (CTerm basis) s c where
     reduceOnce' s zipper =
         case redex (zipSelected zipper) of
              Just redex ->  return (Just (applyCombinator (zipper,redex)))
@@ -340,9 +338,9 @@ instance (ReductionContext c (CTerm basis v),Variable v, Basis basis v, Strategy
                                     Just r' -> return (Just $ zipper {zipSelected =  l :@ zipSelected r'})
 
 -- | Apply the Combinator comb on the term list
-applyCombinator :: Basis basis v =>
-                (BTZipper (CTerm basis v), (Combinator basis v, [CTerm basis v]))
-                -> BTZipper (CTerm basis v)
+applyCombinator :: Basis basis =>
+                (BTZipper (CTerm basis), (Combinator basis, [CTerm basis]))
+                -> BTZipper (CTerm basis)
 applyCombinator (zipper,(comb,args)) =
     let replaced = foldr (\ (var,arg) term -> substitute var arg term)
                             (combReduct comb)
@@ -357,8 +355,8 @@ applyCombinator (zipper,(comb,args)) =
 -- | Normal order reduction for a term.
 --
 --  This is not guaranteed to terminate.
-normalOrderReduction :: Basis basis v => CTerm basis v -> CTerm basis v
-normalOrderReduction = reduceIt nullContext NormalForm
+normalOrderReduction :: Basis basis => CTerm basis -> CTerm basis
+normalOrderReduction = reduceIt instrumentedContext NormalForm
 
 --
 ---- | Takes a string, parses it, applies normalOrderReduction and prints the result.

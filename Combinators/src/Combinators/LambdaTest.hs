@@ -56,6 +56,18 @@ testLambda = [testProperty "prop_printParse" prop_printParse
              , testCase "testReduction10" testReduction10
              , testCase "testReduction11" testReduction11
              , testCase "testReduction12" testReduction12
+             , testCase "testReductionB1" testReductionB1
+             , testCase "testReductionB2" testReductionB2
+             , testCase "testReductionB3" testReductionB3
+             , testCase "testReductionB4" testReductionB4
+             , testCase "testReductionB5" testReductionB5
+             , testCase "testReductionB6" testReductionB6
+             , testCase "testReductionB7" testReductionB7
+             , testCase "testReductionB8" testReductionB8
+             , testCase "testReductionB9" testReductionB9
+             , testCase "testReductionB10" testReductionB10
+             , testCase "testReductionB11" testReductionB11
+             , testCase "testReductionB12" testReductionB12
 
              ]
 
@@ -123,4 +135,70 @@ testReduction12 =
 testReduction13 :: Assertion
 testReduction13 =
     parseLambda "a b" @=? (reduceIt instrumentedContext NormalForm . parseLambda)
+                "(\\f a.f a) a b"
+
+testReductionB1 :: Assertion
+testReductionB1 =
+    parseLambdaB "y y y" @=? (reduceIt instrumentedContext NormalForm . parseLambdaB) "(\\x.x x) y y"
+
+testReductionB2 :: Assertion
+testReductionB2 =
+    parseLambdaB "\\s.s s" @=? (reduceIt instrumentedContext NormalForm . parseLambdaB) "(\\f.f) (\\x.x) \\s.s s"
+
+testReductionB3 :: Assertion
+testReductionB3 =
+    parseLambdaB "\\t. (y y y)" @=? (reduceIt instrumentedContext NormalForm . parseLambdaB) "\\t.(\\x.x x) y y"
+
+testReductionB4 :: Assertion
+testReductionB4 =
+    parseLambdaB "y (y y y)" @=? (reduceIt instrumentedContext NormalForm . parseLambdaB)
+                "(\\x. x) y ((\\x.x x) y y)"
+
+testReductionB5 :: Assertion
+testReductionB5 =
+    parseLambdaB "x" @=? (reduceIt instrumentedContext NormalForm . parseLambdaB)
+                "(\\t. x) y"
+
+-- | two tie theta
+testReductionB6 :: Assertion
+testReductionB6 =
+    parseLambdaB "y" @=? (reduceIt instrumentedContext NormalForm . parseLambdaB)
+                "(\\x.(\\x.y) x) x"
+
+testReductionB7 :: Assertion
+testReductionB7 =
+    parseLambdaB "x x (x x (x x)) \\z.z z" @=? (reduceIt instrumentedContext NormalForm . parseLambdaB)
+                "(\\x. (\\y. y(y y)) x) (x x) (\\z.z z)"
+
+testReductionB8 :: Assertion
+testReductionB8 =
+    parseLambdaB "\\y.x x y (x x y)" @=? (reduceIt instrumentedContext NormalForm . parseLambdaB)
+                "(\\ z y. x x y (x x y)) x"
+
+testReductionB9 :: Assertion
+testReductionB9 =
+    parseLambdaB "y (v v)" @=? (reduceIt instrumentedContext NormalForm . parseLambdaB)
+                "(\\x. x) y ((\\z. z z) v)"
+
+testReductionB10 :: Assertion
+testReductionB10 =
+    parseLambdaB "y" @=? (reduceIt instrumentedContext NormalForm . parseLambdaB)
+                "(\\x. x y) \\z. z"
+
+-- infinite reduction
+testReductionB11 :: Assertion
+testReductionB11 =
+    Nothing @=? (reduce instrumentedContext NormalForm . parseLambdaB)
+                "(\\x. x) ((\\y z. z(y y z))(\\y z. z(y y z))x)"
+
+-- composite beta reduction
+testReductionB12 :: Assertion
+testReductionB12 =
+    parseLambdaB "y (v v)" @=? (reduceIt instrumentedContext NormalForm . parseLambdaB)
+                "(\\x.x) y ((\\z.z z) v)"
+
+-- name clashes (alpha renaming, de bruijn indices  (b b) is wrong (a b) is correct.
+testReductionB13 :: Assertion
+testReductionB13 =
+    parseLambdaB "a b" @=? (reduceIt instrumentedContext NormalForm . parseLambdaB)
                 "(\\f a.f a) a b"

@@ -29,23 +29,23 @@ import Control.Monad (liftM2, liftM)
 import Data.Maybe (fromJust)
 
 --  For any term: print and parse give the original term
-prop_spineLength :: CTerm IKS VarString -> Bool
+prop_spineLength :: CTerm IKS -> Bool
 prop_spineLength term = length (spine term) == spineLength term
 
 -- example
 testPp :: Assertion
 testPp = assertBool "pp"
-    ((parse "S K (K v)" :: CTerm IKS VarString) == (Const sIKS :@ Const kIKS)
+    ((parse "S K (K v)" :: CTerm IKS) == (Const sIKS :@ Const kIKS)
                                                     :@ (Const kIKS :@ Var "v"))
 
 -- example
 testParse :: Assertion
 testParse = assertBool "parse"
-    ((show . pp) (parse "S K (K v)" :: CTerm IKS VarString) == "S K (K v)")
+    ((show . pp) (parse "S K (K v)" :: CTerm IKS) == "S K (K v)")
 
 -- ** Testing
 
-instance Arbitrary (CTerm IKS VarString) where
+instance Arbitrary (CTerm IKS) where
     arbitrary = sized $ \_n -> oneof
         [liftM Const (elements primCombs),
             liftM Var (elements ["u","v","w","x","y","z"]),
@@ -54,7 +54,7 @@ instance Arbitrary (CTerm IKS VarString) where
 
 
 --  For any term: print and parse give the original term
-prop_printParse :: CTerm IKS VarString -> Bool
+prop_printParse :: CTerm IKS -> Bool
 prop_printParse term = term == parseIKS ((show . pp) term)
 
 -----------------------------------------------------------------------------
@@ -141,23 +141,23 @@ testZipIsNotRoot =  assertBool "testZipIsNotRoot"
 
 -- ** Testing
 
-instance Arbitrary (BTZipper (CTerm IKS VarString)) where
+instance Arbitrary (BTZipper (CTerm IKS)) where
     arbitrary = do
         term <- arbitrary
         elements (zipEnum (zipper term))
 
 -- | A root is a root
-prop_zipRoot :: BTZipper (CTerm IKS VarString) -> Bool
+prop_zipRoot :: BTZipper (CTerm IKS) -> Bool
 prop_zipRoot m = zipIsRoot (zipRoot m)
 
 -- | up after down is identity
-prop_upDown1 :: BTZipper (CTerm IKS VarString) -> Bool
+prop_upDown1 :: BTZipper (CTerm IKS) -> Bool
 prop_upDown1 zip' = case zipSelected zip' of
                     _ :@ _ -> zip' == (fromJust . zipUp . fromJust . zipDownLeft) zip'
                     _ -> True
 
 -- | down after up is identity, when the position is recovered
-prop_upDown2 ::  BTZipper (CTerm IKS VarString) -> Bool
+prop_upDown2 ::  BTZipper (CTerm IKS) -> Bool
 prop_upDown2 zip' = case zipAnchestors zip' of
                     []          -> True
                     Left _ : _  -> zip' == (fromJust . zipDownRight . fromJust . zipUp) zip'

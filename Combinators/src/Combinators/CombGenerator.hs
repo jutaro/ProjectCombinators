@@ -14,7 +14,6 @@
 module Combinators.CombGenerator where
 
 import Combinators.Combinator
-import Combinators.Variable
 import Combinators.BinaryTree
 
 import Data.Array.Unboxed
@@ -120,28 +119,28 @@ printStruct :: BinaryTreeStruct -> String
 printStruct a = map (\e -> if e then '1' else '0') (elems a)
 
 -- | Generates an infinite List of all possible combinators of this basis
-genCombs :: (PP (CTerm basis v),Variable v, Basis basis v) => [CTerm basis v]
+genCombs :: (PP (CTerm basis), Basis basis) => [CTerm basis]
 genCombs = concatMap genCombsN [0..]
 
 -- | Generate instances of a combinatory basis with n + 1 combinators.
-genCombsN :: forall b v.(PP (CTerm b v),Variable v, Basis b v) => Int -> [CTerm b v]
+genCombsN :: forall b.(PP (CTerm b),Basis b) => Int -> [CTerm b]
 genCombsN n = concatMap (genCombsTree n) permutations
   where
-    primitiveCombinators :: [Combinator b v] = primCombs
+    primitiveCombinators :: [Combinator b] = primCombs
     permutations = replicateM (n+1) primitiveCombinators
 
 -- | Generate combinators with n nodes (and n+1 leaves), with all structures and filled with array
 -- contents
-genCombsTree :: (PP (CTerm basis v),Variable v, Basis basis v) =>
-                    Int -> [Combinator basis v] -> [CTerm basis v]
+genCombsTree :: (PP (CTerm basis), Basis basis) =>
+                    Int -> [Combinator basis] -> [CTerm basis]
 genCombsTree n combs =
     let treeStructs = genBinaryTreeStructs n
     in map ((\ (r,_,_) -> r) . (gen combs 1)) treeStructs
 
 -- Helper function for Term building
-gen :: Basis basis v =>
-         [Combinator basis v]
-         -> Int -> BinaryTreeStruct -> (CTerm basis v, Int, [Combinator basis v])
+gen :: Basis basis =>
+         [Combinator basis]
+         -> Int -> BinaryTreeStruct -> (CTerm basis, Int, [Combinator basis])
 gen combList index ts | index > snd (bounds ts) || not (ts ! index) =
     (Const (head combList), index+1,(tail combList))
                       | otherwise =
@@ -149,13 +148,13 @@ gen combList index ts | index > snd (bounds ts) || not (ts ! index) =
         (right,index'', combList'') = gen combList' (index') ts
     in (left :@ right,index'',combList'')
 
-sizeGenCombsN :: forall b. Basis b VarString => b -> [Integer]
+sizeGenCombsN :: forall b. Basis b => b -> [Integer]
 sizeGenCombsN _ = map (\n -> (catalans !! n) * (fromIntegral (length primitiveCombinators) ^ (n+1))) [0..]
   where
-    primitiveCombinators :: [Combinator b VarString] = primCombs
+    primitiveCombinators :: [Combinator b] = primCombs
 
 -- | Ranking for any number of internal noes
-rankComb :: forall basis v. (Variable v , Basis basis v) => CTerm basis v -> Integer
+rankComb :: forall basis . Basis basis => CTerm basis -> Integer
 rankComb term = -- trace ("n: " ++ show n ++
 --                        " rank: " ++ show rankNum ++
 --                        " perm: " ++ show permNum ++
@@ -168,7 +167,7 @@ rankComb term = -- trace ("n: " ++ show n ++
                         ((fromIntegral (length primCombis)) ^ i)) [1..n])
 
     n = nodeSize term
-    primCombis = primCombs :: [Combinator basis v]
+    primCombis = primCombs :: [Combinator basis]
     perm = replicateM (n+1) primCombs
     leaves = preorderLeaves term
     permIndex = case findIndex (== (map (\ t -> case t of
@@ -181,7 +180,7 @@ rankComb term = -- trace ("n: " ++ show n ++
     ts = treeStructFromBinaryTree term
 
 -- | Unranking for any number of internal noes
-unrankComb :: forall basis v. Basis basis v => Integer -> CTerm basis v
+unrankComb :: forall basis. Basis basis => Integer -> CTerm basis
 unrankComb r = unrank 0 (r - 1)
   where
     unrank n r' = let c = catalans !! n
@@ -198,5 +197,5 @@ unrankComb r = unrank 0 (r - 1)
                             in --trace ("n: " ++ show n ++ " c: " ++ show c ++ " permIndex: " ++ show permIndex ++
                                --         " tsIndex: " ++ show tsIndex) $
                                r
-    primCombinators :: [Combinator basis v] = primCombs
+    primCombinators :: [Combinator basis] = primCombs
 

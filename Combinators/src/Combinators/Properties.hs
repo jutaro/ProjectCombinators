@@ -19,17 +19,17 @@ import Combinators.Reduction
 
 
 -- | A term t is in weak normal form, iff M contains no redexes.
-_isWeakNormal :: Basis basis v => CTerm basis v -> Bool
+_isWeakNormal :: Basis basis => CTerm basis -> Bool
 _isWeakNormal t = case reduceOnce nullContext HeadNormalForm t of
                     Just _ -> False
                     Nothing -> True -- term not changed, so no redex
 
 -- | Is this weak extensional equality?
 -- TODO
-isWeakEqual :: Basis basis v => CTerm basis v -> CTerm basis v -> Bool
+isWeakEqual :: Basis basis => CTerm basis -> CTerm basis -> Bool
 isWeakEqual t1 t2 = primTermEqual (normalOrderReduction t1) (normalOrderReduction t2)
 
-primTermEqual :: Basis basis v => CTerm basis v -> CTerm basis v -> Bool
+primTermEqual :: Basis basis => CTerm basis -> CTerm basis -> Bool
 primTermEqual t1 t2 = snd (primTermEqual' [] t1 t2)
   where
     primTermEqual' env (Const a) (Const b) = (env,a == b)
@@ -46,7 +46,7 @@ primTermEqual t1 t2 = snd (primTermEqual' [] t1 t2)
 
 
 -- | Computes the arity of a term
-arity :: Basis basis v => CTerm basis v -> Maybe Int
+arity :: Basis basis => CTerm basis -> Maybe Int
 arity t = arity' 0 (normalOrderReduction t)
   where
     arity' count (Const c) = Just (primArity c - count)
@@ -55,7 +55,7 @@ arity t = arity' 0 (normalOrderReduction t)
 
 
 
-spineList :: Basis basis v => CTerm basis v -> [CTerm basis v]
+spineList :: Basis basis => CTerm basis -> [CTerm basis]
 spineList = reverse . spineList'
   where
     spineList' co@(Const _)  = [co]
@@ -64,7 +64,7 @@ spineList = reverse . spineList'
 
 {-
 -- | Is this combinator an identity combinator (like I) of any arity
-isIdentity :: Basis basis v => CTerm basis v -> Bool
+isIdentity :: Basis basis v => CTerm basis -> Bool
 isIdentity term =
     case arity term of
         Nothing -> False
