@@ -47,18 +47,18 @@ testArity3 =
 
 
 -- example
-testIdentity1 :: Assertion
-testIdentity1 =   assertBool "testIdentity1"
-    $ isIdentity (parseIKS "I")
-testIdentity2 :: Assertion
-testIdentity2 =   assertBool "testIdentity2"
-    $ isIdentity (parseIKS "I (S K K)")
-testIdentity3 :: Assertion
-testIdentity3 =   assertBool "testIdentity3"
-    $ isIdentity (parseIKS "S (K S) K I")
-testIdentity4 :: Assertion
-testIdentity4 =   assertBool "testIdentity4"
-    $ not (isIdentity (parseIKS "S (K K) K I"))
+--testIdentity1 :: Assertion
+--testIdentity1 =   assertBool "testIdentity1"
+--    $ isIdentity (parseIKS "I")
+--testIdentity2 :: Assertion
+--testIdentity2 =   assertBool "testIdentity2"
+--    $ isIdentity (parseIKS "I (S K K)")
+--testIdentity3 :: Assertion
+--testIdentity3 =   assertBool "testIdentity3"
+--    $ isIdentity (parseIKS "S (K S) K I")
+--testIdentity4 :: Assertion
+--testIdentity4 =   assertBool "testIdentity4"
+--    $ not (isIdentity (parseIKS "S (K K) K I"))
 
 {-
 --example
@@ -86,11 +86,12 @@ testProperties = [testCase "testWeakEqual1" testWeakEqual1,
                     testCase "testWeakEqual3" testWeakEqual3,
                     testCase "testArity1" testArity1,
                     testCase "testArity2" testArity2,
-                    testCase "testArity3" testArity3,
-                    testCase "testIdentity1" testIdentity1,
-                    testCase "testIdentity2" testIdentity2,
-                    testCase "testIdentity3" testIdentity3,
-                    testCase "testIdentity4" testIdentity4]
+                    testCase "testArity3" testArity3
+--                    testCase "testIdentity1" testIdentity1,
+--                    testCase "testIdentity2" testIdentity2,
+--                    testCase "testIdentity3" testIdentity3,
+--                    testCase "testIdentity4" testIdentity4
+                    ]
 {-
                     testCase "testAssociator1" testAssociator1,
                     testCase "testAssociator2" testAssociator2,

@@ -11,7 +11,7 @@ module Combinators.Properties where
 
 import Combinators.Combinator
 import Combinators.Reduction
-import Combinators.Variable
+-- import Combinators.Variable
 
 -----------------------------------------------------------------------------
 -- * Properties of combinators
@@ -62,7 +62,7 @@ spineList = reverse . spineList'
     spineList' va@(Var _)    = [va]
     spineList' (l :@ r)      = r : spineList l
 
-
+{-
 -- | Is this combinator an identity combinator (like I) of any arity
 isIdentity :: Basis basis v => CTerm basis v -> Bool
 isIdentity term =
@@ -74,7 +74,7 @@ isIdentity term =
                 outTerm  = normalOrderReduction inTerm
                 computed = spineList outTerm
             in vars == computed
-
+-}
 {-
 -- | Is this combinator an associator combinator (like B) of any arity > 3
 isAssociator :: Basis basis v => Term basis v -> Bool

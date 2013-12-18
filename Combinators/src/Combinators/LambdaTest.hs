@@ -55,6 +55,8 @@ testLambda = [testProperty "prop_printParse" prop_printParse
              , testCase "testReduction9" testReduction9
              , testCase "testReduction10" testReduction10
              , testCase "testReduction11" testReduction11
+             , testCase "testReduction12" testReduction12
+
              ]
 
 testReduction1 :: Assertion
@@ -105,7 +107,20 @@ testReduction10 =
     parseLambda "y" @=? (reduceIt instrumentedContext NormalForm . parseLambda)
                 "(\\x. x y) \\z. z"
 
+-- infinite reduction
 testReduction11 :: Assertion
 testReduction11 =
-    parseLambda "x" @=? (reduceIt instrumentedContext NormalForm . parseLambda)
+    Nothing @=? (reduce instrumentedContext NormalForm . parseLambda)
                 "(\\x. x) ((\\y z. z(y y z))(\\y z. z(y y z))x)"
+
+-- composite beta reduction
+testReduction12 :: Assertion
+testReduction12 =
+    parseLambda "y (v v)" @=? (reduceIt instrumentedContext NormalForm . parseLambda)
+                "(\\x.x) y ((\\z.z z) v)"
+
+-- name clashes (alpha renaming, de bruijn indices  (b b) is wrong (a b) is correct.
+testReduction13 :: Assertion
+testReduction13 =
+    parseLambda "a b" @=? (reduceIt instrumentedContext NormalForm . parseLambda)
+                "(\\f a.f a) a b"

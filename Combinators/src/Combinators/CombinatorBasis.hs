@@ -66,7 +66,7 @@ sIKS = Combinator "S" [varString "_u", varString "_v", varString"_w"]
 instance Variable v => Basis IKS v where
     primCombs = [iIKS,kIKS,sIKS]
 
-instance Variable v => BracketAbstract IKS v where
+instance BracketAbstract IKS VarString where
     bracketAbstract (LVar v) = Var v
     bracketAbstract ((LAbst v1) :@: r) | LVar v1 == r = Const iIKS
     bracketAbstract ((LAbst v1) :@: r) | not (occurs v1 r) = Const kIKS :@ bracketAbstract r

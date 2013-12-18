@@ -34,7 +34,7 @@ class (Show v, Eq v, Ord v) => Variable v where
         -- ^ needs to start with lower case character
     varParse  :: Parser v
     varString :: VarString -> v -- Fixme with state
-    varGen    :: Int -> [v]
+--    varGen    :: Int -> [v]
 
 -----------------------------------------------------------------------------
 -- ** VarString
@@ -51,8 +51,26 @@ instance Variable VarString where
             return (start:rest)
         PA.<?> "varParse for SimpleVar"
     varString = id
-    varGen i = map (\i' -> "v_" ++ show i') [1 .. i]
 
+nameGen :: [String]
+nameGen = [ c: n | n <- ("" : map show [1..]), c <- "uvwxyz"]
+
+-----------------------------------------------------------------------------
+-- ** VarIndex
+
+-- | The representation of variables as de Bruin indices
+type VarInt = Int
+
+instance Variable VarInt where
+--    varPp = id
+--    varParse = do
+--            PA.spaces
+--            start <- PA.lower
+--            rest <- PA.many (PA.noneOf " ()\t\n\r\f\v.")
+--            return (start:rest)
+--        PA.<?> "varParse for SimpleVar"
+--    varString = id
+--    varGen i = map (\i' -> "v_" ++ show i') [1 .. i]
 
 
 

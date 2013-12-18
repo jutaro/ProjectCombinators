@@ -23,12 +23,12 @@ import Combinators.Variable
 -- * Comb Lambda - back and forth between combinatory logic and lamnbda calculus
 -----------------------------------------------------------------------------
 
-combToLambda' :: Variable v => CTerm basis v -> LTerm v
+combToLambda' :: CTerm basis VarString -> LTerm VarString
 combToLambda' (Var v) = LVar v
 combToLambda' (l :@ r) = combToLambda' l :@: combToLambda' r
 combToLambda' (Const comb) =  reductToLambda (combVars comb) (combReduct comb)
 
-reductToLambda :: Variable v => [v] -> CTerm basis v -> LTerm v
+reductToLambda :: [VarString] -> CTerm basis VarString -> LTerm VarString
 reductToLambda vars term = foldr (\v t -> LAbst v :@: t) (combToLambda'' term) vars
   where
     combToLambda'' (Var v)    = LVar v
@@ -36,13 +36,13 @@ reductToLambda vars term = foldr (\v t -> LAbst v :@: t) (combToLambda'' term) v
     combToLambda'' (Const c)  = error $ "CombLambda>>reductToLambda: Const in reduct not allowed " ++
                                 show (combName c)
 
-combToLambda :: Variable v => CTerm basis v -> LTerm v
+combToLambda :: CTerm basis VarString -> LTerm VarString
 combToLambda = reduceIt instrumentedContext NormalForm . combToLambda
 
 class Basis b v => BracketAbstract b v where
     bracketAbstract :: LTerm v -> CTerm b v
 
-instance Variable v => BracketAbstract KS v where
+instance BracketAbstract KS VarString where
     bracketAbstract (LVar v) = Var v
     bracketAbstract ((LAbst v1) :@: r) | LVar v1 == r = Const sKS :@ Const kKS :@ Const kKS
     bracketAbstract ((LAbst v1) :@: r) | not (occurs v1 r) = Const kKS :@ bracketAbstract r

@@ -179,22 +179,23 @@ parsePart = do
 
 -- | Does variable v occurst in the term?
 occurs :: VarString -> LTerm VarString -> Bool
-occurs v (LVar n) = v == n
-occurs v (LAbst n :@: t) = if v == n then False else occurs v t
-occurs v (l :@: r) = occurs v l || occurs v r
-occurs _v (LAbst n) = error $ "CombLambda>>bracketAbstract: Lonely Abstraction " ++ show n
+occurs v (LVar n)                    = v == n
+occurs v (LAbst n :@: t) | v == n    = False
+                         | otherwise = occurs v t
+occurs v (l :@: r)                   = occurs v l || occurs v r
+occurs _v (LAbst n)                  = error $ "CombLambda>>bracketAbstract: Lonely Abstraction " ++ show n
 
 freeVars :: LTerm VarString -> [VarString]
-freeVars (LVar n) = [n]
+freeVars (LVar n)        = [n]
 freeVars (LAbst n :@: t) = delete n (freeVars t)
-freeVars (l :@: r) = freeVars l ++ freeVars r
-freeVars (LAbst n) = error $ "CombLambda>>freeVars: Lonely Abstraction " ++ show n
+freeVars (l :@: r)       = freeVars l ++ freeVars r
+freeVars (LAbst n)       = error $ "CombLambda>>freeVars: Lonely Abstraction " ++ show n
 
 boundVars :: LTerm VarString -> [VarString]
-boundVars (LVar _n) = []
+boundVars (LVar _n)       = []
 boundVars (LAbst n :@: t) = n : boundVars t
-boundVars (l :@: r) = boundVars l ++ boundVars r
-boundVars (LAbst n) = error $ "CombLambda>>freeVars: Lonely Abstraction " ++ show n
+boundVars (l :@: r)       = boundVars l ++ boundVars r
+boundVars (LAbst n)       = error $ "CombLambda>>freeVars: Lonely Abstraction " ++ show n
 
 isClosed :: LTerm VarString -> Bool
 isClosed = null . freeVars
@@ -287,35 +288,35 @@ deriving instance Ord (LTerm VarInt)
 toLambdaB :: LTerm VarString -> LTerm VarInt
 toLambdaB = fst . toLambdaB' [] 0
   where
-    toLambdaB' env freeVarNumber (LVar str) =
-        case List.elemIndex str env of
-            Just i -> (LVar i,freeVarNumber)
-            Nothing -> (LVar (length env + freeVarNumber), freeVarNumber + 1)
+    toLambdaB' env freeVarNumber (LVar str)        =
+                                case List.elemIndex str env of
+                                    Just i -> (LVar i,freeVarNumber)
+                                    Nothing -> (LVar (length env + freeVarNumber), freeVarNumber + 1)
     toLambdaB' env freeVarNumber (LAbst str :@: t) =
-        let (newTerm,newFreeVarNum) = toLambdaB' (str:env) freeVarNumber t
-        in (LAbst str :@: newTerm,newFreeVarNum)
-    toLambdaB' env freeVarNumber (lt :@: rt) =
-        let (l',fvn)  = toLambdaB' env freeVarNumber lt
-            (r',fvn') = toLambdaB' env fvn rt
-        in (l' :@: r', fvn')
-    toLambdaB' _env _freeVarNumber (LAbst n) = error $ "LambdaB>>toLambdaB': Lonely Abstraction " ++ show n
+                                let (newTerm,newFreeVarNum) = toLambdaB' (str:env) freeVarNumber t
+                                in (LAbst str :@: newTerm,newFreeVarNum)
+    toLambdaB' env freeVarNumber (lt :@: rt)       =
+                                let (l',fvn)  = toLambdaB' env freeVarNumber lt
+                                    (r',fvn') = toLambdaB' env fvn rt
+                                in (l' :@: r', fvn')
+    toLambdaB' _env _freeVarNumber (LAbst n)       = error $ "LambdaB>>toLambdaB': Lonely Abstraction " ++ show n
 
 fromLambdaB :: LTerm VarInt -> LTerm VarString
 fromLambdaB = fst . fromLambdaB' [] 0
   where
     fromLambdaB' :: [String] -> Int -> LTerm VarInt -> (LTerm VarString,Int)
-    fromLambdaB' env freeVarNumber (LVar ind) =
+    fromLambdaB' env freeVarNumber (LVar ind)        =
         case env !!! ind of
             Just s -> (LVar s,freeVarNumber)
             Nothing -> (LVar (nameGen !! (length env + freeVarNumber)), freeVarNumber + 1)
     fromLambdaB' env freeVarNumber (LAbst str :@: t) =
         let (newTerm,newFreeVarNum) = fromLambdaB' (str:env) freeVarNumber t
         in (LAbst str :@: newTerm,newFreeVarNum)
-    fromLambdaB' env freeVarNumber (lt :@: rt) =
-        let (l',fvn) = fromLambdaB' env freeVarNumber lt
+    fromLambdaB' env freeVarNumber (lt :@: rt)       =
+        let (l',fvn)  = fromLambdaB' env freeVarNumber lt
             (r',fvn') = fromLambdaB' env fvn rt
         in (l' :@: r', fvn')
-    fromLambdaB' _env _freeVarNumber (LAbst n) = error $ "LambdaB>>toLambdaB': Lonely Abstraction " ++ show n
+    fromLambdaB' _env _freeVarNumber (LAbst n)       = error $ "LambdaB>>toLambdaB': Lonely Abstraction " ++ show n
 
 (!!!)                :: [a] -> Int -> Maybe a
 _      !!! n | n < 0 =  Nothing
