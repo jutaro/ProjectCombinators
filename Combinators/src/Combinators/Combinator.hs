@@ -22,13 +22,6 @@ module Combinators.Combinator (
     KS,
     kKS,
     sKS,
-    parseKS,
------------------------------------------------------------------------------
--- ** Priniting and parsing
-    pp,
-    pprint,
-    parse,
-    parseErr,
 -----------------------------------------------------------------------------
 -- ** Subterms
     subterm,
@@ -53,6 +46,7 @@ module Combinators.Combinator (
 import Combinators.Variable
 import Combinators.BinaryTree
 import Combinators.Reduction
+import Combinators.Types
 
 import Data.List (nub)
 import Data.Maybe (fromJust, isJust)
@@ -100,6 +94,10 @@ instance Basis basis => Term (CTerm basis) where
     isTerminal (Const _)        = True
     isTerminal _                = False
 
+-- Bind application to the left.
+infixl 5 :@
+
+
 -- | A 'Basis' defines the primitive combinators.
 --
 -- We might add here bracket abstraction?
@@ -123,7 +121,8 @@ data Combinator basis where
     Combinator :: (Basis basis) =>
         {combName   :: ! String, -- ^ needs to start with upper case character
          combVars   :: ! [VarString],
-         combReduct :: ! (CTerm basis)} -> Combinator basis
+         combReduct :: ! (CTerm basis),
+         combType   :: ! SType} -> Combinator basis
 
 deriving instance Eq (Combinator basis)
 deriving instance Ord (Combinator basis)
@@ -152,27 +151,25 @@ data KS
 -- | Definition of the combinators for the IKS Basis
 kKS, sKS :: Combinator KS
 kKS = Combinator "K" ["_u", "_v"] (Var ("_u"))
+            (SAtom "a" :->: SAtom "b" :->: SAtom "a")
 sKS = Combinator "S" ["_u", "_v", "_w"]
             (Var ("_u") :@ Var ("_w") :@
             (Var ("_v") :@ Var ("_w")))
+            ((SAtom "a" :->: SAtom "b" :->: SAtom "c") :->: (SAtom "a" :->: SAtom "b") :->: SAtom "a" :->: SAtom "c")
 
 instance Basis KS where
     primCombs = [kKS,sKS]
 
-parseKS :: String -> CTerm KS
-parseKS = parse
 
 -----------------------------------------------------------------------------
 -- ** Priniting and parsing
 
 instance Basis basis => PP (CTerm basis) where
     pp = pp' False
+    pparseError = PA.parse (parseTerm Nothing) ""
 
 -- | Pretty prints a term.
 --
--- Avoids printing outer parenthesis and left parenthesis.
---ppC :: Basis basis v => CTerm basis v -> String
---ppC t = PP.render (pp' False t)
 
 pp' :: Basis basis => Bool -> CTerm basis -> PP.Doc
 pp' _ (Const c)     = PP.text (combName c)
@@ -180,30 +177,6 @@ pp' _ (Var v)       = PP.text (varPp v)
 pp' False (l :@ r)  = PP.sep [pp' False l, pp' True r]
 pp' True (l :@ r)   = PP.text "("  PP.<> PP.sep [pp' False l, pp' True r] PP.<> PP.text ")"
 
-pprint :: Basis basis => CTerm basis -> String
-pprint = pprint' False
-
-pprint' :: Basis basis => Bool -> CTerm basis -> String
-pprint' _ (Const c)     = combName c
-pprint' _ (Var v)       = varPp v
-pprint' False (l :@ r)  = pprint' False l ++ " " ++  pprint' True r
-pprint' True (l :@ r)   = "("  ++ pprint' False l ++ " " ++  pprint' True r ++ ")"
-
--- | Takes a String and returns a Term
---
--- Throws an error, when the String can't be parsed
-parse ::  Basis b => String -> CTerm b
-parse str = case parse' str of
-                Left err    -> error (show err)
-                Right term  -> term
-
-parseErr ::  Basis b => String -> Either String (CTerm b)
-parseErr str = case parse' str of
-                Left err    -> Left (show err)
-                Right term  -> Right term
-
-parse' :: Basis b => String -> Either PA.ParseError (CTerm b)
-parse' = PA.parse (parseTerm Nothing) ""
 
 parseComb, parsePrim, parseVar
     :: (Basis basis) => Parser (CTerm basis)

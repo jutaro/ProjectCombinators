@@ -117,15 +117,17 @@ class (Monad c, BinaryTree t, PP t) => ReductionContext c t where
     stepReduction :: (BinaryTree t, PP t) => (BTZipper t) -> c (Maybe (BTZipper t))
     stopReduction :: (BinaryTree t, PP t) => (BTZipper t) -> c (BTZipper t)
 
+
+
+-----------------------------------------------------------------------------
+-- *** Null Context
+type NullContext = Identity
+
 instance (PP t, BinaryTree t) => ReductionContext Identity t where
     runContext (Identity a) = a
     startReduction tz = return tz
     stepReduction tz = return (Just tz)
     stopReduction tz = return tz
-
------------------------------------------------------------------------------
--- *** Null Context
-type NullContext = Identity
 
 nullContext :: Identity (Maybe a)
 nullContext = Identity Nothing
@@ -142,7 +144,7 @@ instance (PP t, BinaryTree t, Ord t) => ReductionContext (InstrumentedContext t)
         in  trace (take 3000 (s "")) a
     startReduction tz = do
         let t = unzipper tz
-        modify (\(log,count,l) -> (log . showString "\nstart: " . pps t, count,Set.insert t l))
+        modify (\(log,count,l) -> (log . showString "\nstart: " . ppsh t, count,Set.insert t l))
         return tz
     stepReduction tz =  do
         let t = unzipper tz
@@ -150,7 +152,7 @@ instance (PP t, BinaryTree t, Ord t) => ReductionContext (InstrumentedContext t)
         if Set.member t l
             then do
                 modify (\(log,count,l) ->
-                    (log . showString "\nCycle detected: " . pps t,
+                    (log . showString "\nCycle detected: " . ppsh t,
                     count + 1,
                     l))
                 return Nothing
@@ -163,7 +165,7 @@ instance (PP t, BinaryTree t, Ord t) => ReductionContext (InstrumentedContext t)
                     return Nothing
                 else do
                     modify (\(log,count,l) ->
-                        (log . showString "\nstep" . shows (count + 1) . showString ": " . pps t,
+                        (log . showString "\nstep" . shows (count + 1) . showString ": " . ppsh t,
                         count+1,
                         Set.insert t l
                         ))

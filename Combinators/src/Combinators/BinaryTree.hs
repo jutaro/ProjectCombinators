@@ -14,10 +14,43 @@
 module Combinators.BinaryTree where
 
 import Data.Maybe (isNothing)
-import Text.PrettyPrint (Doc)
+import Text.PrettyPrint (text, renderStyle, style, Doc, Style(..))
+import Text.PrettyPrint.HughesPJ (Mode(..))
+import Text.Parsec (ParseError)
 
 -----------------------------------------------------------------------------
 -- * Binary tree class and a Zipper on it
+-----------------------------------------------------------------------------
+
+-----------------------------------------------------------------------------
+-- ** A class for printing and parsing
+-----------------------------------------------------------------------------
+
+class PP t where
+    pp :: t -> Doc
+    pparseError :: String -> Either ParseError t
+
+    pps :: t -> String
+    pps = renderStyle style . pp
+    ppsh :: t -> ShowS
+    ppsh = showString . pps
+    ppsNoNewline :: t -> String
+    ppsNoNewline = renderStyle style{mode = OneLineMode} . pp
+
+    pparse :: String -> t
+    pparse str = case pparseError str of
+                    Left err -> error (show err)
+                    Right t  -> t
+
+instance PP t => PP (Maybe t) where
+    pp Nothing = text "Failed!"
+    pp (Just t) = pp t
+    pparse str = case pparseError str of
+                    Left err -> Nothing
+                    Right t  -> Just t
+
+-----------------------------------------------------------------------------
+-- ** A class for a binary tree
 -----------------------------------------------------------------------------
 
 -- | A binary tree may have a right or left subpart
@@ -28,11 +61,6 @@ class BinaryTree t where
     -- ^ Constructs a tree from its left and right subparts
     isLeaf :: t -> Bool
     isLeaf = isNothing . decompose
-
-class PP t where
-    pp :: t -> Doc
-    pps :: t -> ShowS
-    pps = shows . pp
 
 -- | preorderLeaves
 preorderLeaves :: BinaryTree t => t -> [t]

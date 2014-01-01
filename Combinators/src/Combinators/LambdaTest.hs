@@ -40,7 +40,7 @@ instance Arbitrary (LTerm VarString) where
 prop_printParse :: LTerm VarString -> Bool
 prop_printParse term = --trace ("\n\n" ++ ppl term ++ "\n" ++ ppl (parseLambda (ppl term))
                        --     ++ "\n\n" ++ show term ++ "\n" ++ show (parseLambda (ppl term))) $
-                            term == parseLambda ((show . pp) term)
+                            term == pparse ((show . pp) term)
 
 testLambda :: [Test]
 testLambda = [testProperty "prop_printParse" prop_printParse
@@ -73,132 +73,132 @@ testLambda = [testProperty "prop_printParse" prop_printParse
 
 testReduction1 :: Assertion
 testReduction1 =
-    parseLambda "y y y" @=? (reduceIt instrumentedContext NormalForm . parseLambda) "(\\x.x x) y y"
+    (pparse :: String -> LTerm VarString) "y y y" @=? (reduceIt instrumentedContext NormalForm . pparse) "(\\x.x x) y y"
 
 testReduction2 :: Assertion
 testReduction2 =
-    parseLambda "\\s.s s" @=? (reduceIt instrumentedContext NormalForm . parseLambda) "(\\f.f) (\\x.x) \\s.s s"
+    (pparse :: String -> LTerm VarString) "\\s.s s" @=? (reduceIt instrumentedContext NormalForm . pparse) "(\\f.f) (\\x.x) \\s.s s"
 
 testReduction3 :: Assertion
 testReduction3 =
-    parseLambda "\\t. (y y y)" @=? (reduceIt instrumentedContext NormalForm . parseLambda) "\\t.(\\x.x x) y y"
+    (pparse :: String -> LTerm VarString) "\\t. (y y y)" @=? (reduceIt instrumentedContext NormalForm . pparse) "\\t.(\\x.x x) y y"
 
 testReduction4 :: Assertion
 testReduction4 =
-    parseLambda "y (y y y)" @=? (reduceIt instrumentedContext NormalForm . parseLambda)
+    (pparse :: String -> LTerm VarString) "y (y y y)" @=? (reduceIt instrumentedContext NormalForm . pparse)
                 "(\\x. x) y ((\\x.x x) y y)"
 
 testReduction5 :: Assertion
 testReduction5 =
-    parseLambda "x" @=? (reduceIt instrumentedContext NormalForm . parseLambda)
+    (pparse :: String -> LTerm VarString) "x" @=? (reduceIt instrumentedContext NormalForm . pparse)
                 "(\\t. x) y"
 
 -- | two tie theta
 testReduction6 :: Assertion
 testReduction6 =
-    parseLambda "y" @=? (reduceIt instrumentedContext NormalForm . parseLambda)
+    (pparse :: String -> LTerm VarString) "y" @=? (reduceIt instrumentedContext NormalForm . pparse)
                 "(\\x.(\\x.y) x) x"
 
 testReduction7 :: Assertion
 testReduction7 =
-    parseLambda "x x (x x (x x)) \\z.z z" @=? (reduceIt instrumentedContext NormalForm . parseLambda)
+    (pparse :: String -> LTerm VarString) "x x (x x (x x)) \\z.z z" @=? (reduceIt instrumentedContext NormalForm . pparse)
                 "(\\x. (\\y. y(y y)) x) (x x) (\\z.z z)"
 
 testReduction8 :: Assertion
 testReduction8 =
-    parseLambda "\\y.x x y (x x y)" @=? (reduceIt instrumentedContext NormalForm . parseLambda)
+    (pparse :: String -> LTerm VarString) "\\y.x x y (x x y)" @=? (reduceIt instrumentedContext NormalForm . pparse)
                 "(\\ z y. x x y (x x y)) x"
 
 testReduction9 :: Assertion
 testReduction9 =
-    parseLambda "y (v v)" @=? (reduceIt instrumentedContext NormalForm . parseLambda)
+    (pparse :: String -> LTerm VarString) "y (v v)" @=? (reduceIt instrumentedContext NormalForm . pparse)
                 "(\\x. x) y ((\\z. z z) v)"
 
 testReduction10 :: Assertion
 testReduction10 =
-    parseLambda "y" @=? (reduceIt instrumentedContext NormalForm . parseLambda)
+    (pparse :: String -> LTerm VarString) "y" @=? (reduceIt instrumentedContext NormalForm . pparse)
                 "(\\x. x y) \\z. z"
 
 -- infinite reduction
 testReduction11 :: Assertion
 testReduction11 =
-    Nothing @=? (reduce instrumentedContext NormalForm . parseLambda)
+    Nothing @=? (reduce instrumentedContext NormalForm . (pparse :: String -> LTerm VarString))
                 "(\\x. x) ((\\y z. z(y y z))(\\y z. z(y y z))x)"
 
 -- composite beta reduction
 testReduction12 :: Assertion
 testReduction12 =
-    parseLambda "y (v v)" @=? (reduceIt instrumentedContext NormalForm . parseLambda)
+    (pparse :: String -> LTerm VarString) "y (v v)" @=? (reduceIt instrumentedContext NormalForm . pparse)
                 "(\\x.x) y ((\\z.z z) v)"
 
 -- name clashes (alpha renaming, de bruijn indices  (b b) is wrong (a b) is correct.
 testReduction13 :: Assertion
 testReduction13 =
-    parseLambda "a b" @=? (reduceIt instrumentedContext NormalForm . parseLambda)
+    (pparse :: String -> LTerm VarString) "a b" @=? (reduceIt instrumentedContext NormalForm . pparse)
                 "(\\f a.f a) a b"
 
 testReductionB1 :: Assertion
 testReductionB1 =
-    parseLambdaB "y y y" @=? (reduceIt instrumentedContext NormalForm . parseLambdaB) "(\\x.x x) y y"
+    (pparse :: String -> LTerm VarInt) "y y y" @=? (reduceIt instrumentedContext NormalForm . pparse) "(\\x.x x) y y"
 
 testReductionB2 :: Assertion
 testReductionB2 =
-    parseLambdaB "\\s.s s" @=? (reduceIt instrumentedContext NormalForm . parseLambdaB) "(\\f.f) (\\x.x) \\s.s s"
+    (pparse :: String -> LTerm VarInt) "\\s.s s" @=? (reduceIt instrumentedContext NormalForm . pparse) "(\\f.f) (\\x.x) \\s.s s"
 
 testReductionB3 :: Assertion
 testReductionB3 =
-    parseLambdaB "\\t. (y y y)" @=? (reduceIt instrumentedContext NormalForm . parseLambdaB) "\\t.(\\x.x x) y y"
+    (pparse :: String -> LTerm VarInt) "\\t. (y y y)" @=? (reduceIt instrumentedContext NormalForm . pparse) "\\t.(\\x.x x) y y"
 
 testReductionB4 :: Assertion
 testReductionB4 =
-    parseLambdaB "y (y y y)" @=? (reduceIt instrumentedContext NormalForm . parseLambdaB)
+    (pparse :: String -> LTerm VarInt) "y (y y y)" @=? (reduceIt instrumentedContext NormalForm . pparse)
                 "(\\x. x) y ((\\x.x x) y y)"
 
 testReductionB5 :: Assertion
 testReductionB5 =
-    parseLambdaB "x" @=? (reduceIt instrumentedContext NormalForm . parseLambdaB)
+    (pparse :: String -> LTerm VarInt) "x" @=? (reduceIt instrumentedContext NormalForm . pparse)
                 "(\\t. x) y"
 
 -- | two tie theta
 testReductionB6 :: Assertion
 testReductionB6 =
-    parseLambdaB "y" @=? (reduceIt instrumentedContext NormalForm . parseLambdaB)
+    (pparse :: String -> LTerm VarInt) "y" @=? (reduceIt instrumentedContext NormalForm . pparse)
                 "(\\x.(\\x.y) x) x"
 
 testReductionB7 :: Assertion
 testReductionB7 =
-    parseLambdaB "x x (x x (x x)) \\z.z z" @=? (reduceIt instrumentedContext NormalForm . parseLambdaB)
+    (pparse :: String -> LTerm VarInt) "x x (x x (x x)) \\z.z z" @=? (reduceIt instrumentedContext NormalForm . pparse)
                 "(\\x. (\\y. y(y y)) x) (x x) (\\z.z z)"
 
 testReductionB8 :: Assertion
 testReductionB8 =
-    parseLambdaB "\\y.x x y (x x y)" @=? (reduceIt instrumentedContext NormalForm . parseLambdaB)
+    (pparse :: String -> LTerm VarInt) "\\y.x x y (x x y)" @=? (reduceIt instrumentedContext NormalForm . pparse)
                 "(\\ z y. x x y (x x y)) x"
 
 testReductionB9 :: Assertion
 testReductionB9 =
-    parseLambdaB "y (v v)" @=? (reduceIt instrumentedContext NormalForm . parseLambdaB)
+    (pparse :: String -> LTerm VarInt) "y (v v)" @=? (reduceIt instrumentedContext NormalForm . pparse)
                 "(\\x. x) y ((\\z. z z) v)"
 
 testReductionB10 :: Assertion
 testReductionB10 =
-    parseLambdaB "y" @=? (reduceIt instrumentedContext NormalForm . parseLambdaB)
+    (pparse :: String -> LTerm VarInt) "y" @=? (reduceIt instrumentedContext NormalForm . pparse)
                 "(\\x. x y) \\z. z"
 
 -- infinite reduction
 testReductionB11 :: Assertion
 testReductionB11 =
-    Nothing @=? (reduce instrumentedContext NormalForm . parseLambdaB)
+    Nothing @=? (reduce instrumentedContext NormalForm . (pparse :: String -> LTerm VarInt))
                 "(\\x. x) ((\\y z. z(y y z))(\\y z. z(y y z))x)"
 
 -- composite beta reduction
 testReductionB12 :: Assertion
 testReductionB12 =
-    parseLambdaB "y (v v)" @=? (reduceIt instrumentedContext NormalForm . parseLambdaB)
+    (pparse :: String -> LTerm VarInt) "y (v v)" @=? (reduceIt instrumentedContext NormalForm . pparse)
                 "(\\x.x) y ((\\z.z z) v)"
 
 -- name clashes (alpha renaming, de bruijn indices  (b b) is wrong (a b) is correct.
 testReductionB13 :: Assertion
 testReductionB13 =
-    parseLambdaB "a b" @=? (reduceIt instrumentedContext NormalForm . parseLambdaB)
+    (pparse :: String -> LTerm VarInt) "a b" @=? (reduceIt instrumentedContext NormalForm . pparse)
                 "(\\f a.f a) a b"

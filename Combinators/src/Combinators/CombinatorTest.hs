@@ -4,7 +4,7 @@
 --
 -- Module      :  Combinators.CombinatorTest
 -- Copyright   :  All rights reserved, Jürgen Nicklisch-Franken
--- License     :  GPL (Just (Version {versionBranch = [2], versionTags = []}))
+-- License     :  GPL 2
 --
 -- Maintainer  :  Jürgen Nicklisch-Franken
 -- Stability   :  provisional
@@ -28,6 +28,9 @@ import Test.Framework (Test)
 import Control.Monad (liftM2, liftM)
 import Data.Maybe (fromJust)
 
+parseIKS :: String -> CTerm IKS
+parseIKS = pparse
+
 --  For any term: print and parse give the original term
 prop_spineLength :: CTerm IKS -> Bool
 prop_spineLength term = length (spine term) == spineLength term
@@ -35,13 +38,13 @@ prop_spineLength term = length (spine term) == spineLength term
 -- example
 testPp :: Assertion
 testPp = assertBool "pp"
-    ((parse "S K (K v)" :: CTerm IKS) == (Const sIKS :@ Const kIKS)
+    ((pparse "S K (K v)" :: CTerm IKS) == (Const sIKS :@ Const kIKS)
                                                     :@ (Const kIKS :@ Var "v"))
 
 -- example
 testParse :: Assertion
 testParse = assertBool "parse"
-    ((show . pp) (parse "S K (K v)" :: CTerm IKS) == "S K (K v)")
+    ((show . pp) (pparse "S K (K v)" :: CTerm IKS) == "S K (K v)")
 
 -- ** Testing
 

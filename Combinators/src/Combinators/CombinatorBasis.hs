@@ -12,6 +12,7 @@ module Combinators.CombinatorBasis where
 import Combinators.Combinator
 import Combinators.CombLambda
 import Combinators.Lambda
+import Combinators.Types (SType(..))
 
 -----------------------------------------------------------------------------
 -- * Alternative bases for Combinatory logic
@@ -25,14 +26,19 @@ data IBCWK
 iIBCWK, bIBCWK, cIBCWK, kIBCWK, wIBCWK :: Combinator IBCWK
 
 iIBCWK = Combinator "I" ["_u"] (Var ("_u"))
+                (SAtom "a" :->: SAtom "a")
 bIBCWK = Combinator "B" ["_u","_v","_w"]
             (Var ("_u") :@ (Var ("_v") :@ Var ("_w")))
+                (SAtom "a" :->: SAtom "a")
 cIBCWK = Combinator "C" ["_u","_v","_w"]
             ((Var ("_u") :@ Var ("_w")) :@ Var ("_v"))
+                (SAtom "a" :->: SAtom "a")
 kIBCWK = Combinator "K" ["_u", "_v"]
             (Var ("_u"))
+            (SAtom "a" :->: SAtom "b" :->: SAtom "a")
 wIBCWK = Combinator "W" ["_u", "_v"]
             (Var ("_u") :@ Var ("_v") :@ Var ("_v"))
+            (SAtom "a" :->: SAtom "b" :->: SAtom "a")
 
 instance Basis IBCWK where
     primCombs = [iIBCWK, bIBCWK, cIBCWK, kIBCWK, wIBCWK]
@@ -48,19 +54,19 @@ instance Variable v => BracketAbstract IBCWK v where
     bracketAbstract (LAbst v) = error $ "CombLambda>>bracketAbstract: Lonely Abstraction " ++ show v
 -}
 
-parseIBCWK :: String -> CTerm IBCWK
-parseIBCWK = parse :: String -> CTerm IBCWK
-
 -- ** IKS
 
 data IKS
 
 iIKS, kIKS, sIKS :: Combinator IKS
 iIKS = Combinator "I" ["_u"] (Var ("_u"))
+            (SAtom "a" :->: SAtom "a")
 kIKS = Combinator "K" ["_u", "_v"] (Var ("_u"))
+            (SAtom "a" :->: SAtom "b" :->: SAtom "a")
 sIKS = Combinator "S" ["_u", "_v", "_w"]
             (Var ("_u") :@ Var ("_w") :@
             (Var ("_v") :@ Var ("_w")))
+            ((SAtom "a" :->: SAtom "b" :->: SAtom "c") :->: (SAtom "a" :->: SAtom "b") :->: SAtom "a" :->: SAtom "c")
 
 instance Basis IKS where
     primCombs = [iIKS,kIKS,sIKS]
@@ -74,5 +80,3 @@ instance BracketAbstract IKS where
     bracketAbstract (l :@: r) = bracketAbstract l :@ bracketAbstract r
     bracketAbstract (LAbst v) = error $ "CombLambda>>bracketAbstract: Lonely Abstraction " ++ show v
 
-parseIKS :: String -> CTerm IKS
-parseIKS = parse

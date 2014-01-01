@@ -22,6 +22,10 @@ import Control.Seq
 myConfig :: Config
 myConfig = defaultConfig
 
+parseIKS :: String -> CTerm IKS
+parseIKS = pparse
+
+
 main :: IO ()
 main = defaultMainWith myConfig (return ()) [
           bench "parse1" $ whnf parseIKS t1,
@@ -32,9 +36,9 @@ main = defaultMainWith myConfig (return ()) [
           bench "pp2" $ whnf pp (withStrategy rseq (parseIKS t2)),
           bench "pp3" $ whnf pp (withStrategy rseq (parseIKS t3)),
 
-          bench "pprint1" $ whnf pprint (withStrategy rseq (parseIKS t1)),
-          bench "pprint2" $ whnf pprint (withStrategy rseq (parseIKS t2)),
-          bench "pprint3" $ whnf pprint (withStrategy rseq (parseIKS t3)),
+          bench "pprint1" $ whnf pps (withStrategy rseq (parseIKS t1)),
+          bench "pprint2" $ whnf pps (withStrategy rseq (parseIKS t2)),
+          bench "pprint3" $ whnf pps (withStrategy rseq (parseIKS t3)),
 
           bench "red1" $ whnf normalOrderReduction (withStrategy rseq (parseIKS t1)),
           bench "red2" $ whnf normalOrderReduction (withStrategy rseq (parseIKS t2)),

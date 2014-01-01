@@ -20,10 +20,6 @@ module Combinators.Lambda (
 -- ** LTerm type
     LTerm(..),
 -----------------------------------------------------------------------------
--- ** Priniting and parsing
-    parseLambda,
-    parseLambdaB,
------------------------------------------------------------------------------
 -- ** Properties
     occurs,
     freeVars,
@@ -44,7 +40,7 @@ import Combinators.Reduction
 import Text.Parsec.String (Parser)
 import qualified Text.PrettyPrint as PP
 import qualified Text.Parsec as PA
-import Data.List (delete)
+import Data.List (nub, delete)
 import Data.Maybe (fromJust)
 import qualified Data.List as List
        (elemIndex, elem, intersect, nub)
@@ -105,9 +101,13 @@ instance Variable v => Term (LTerm v) where
 
 instance PP (LTerm VarString) where
     pp = pp' True True []
+    pparseError = PA.parse (parseTerm Nothing) ""
 
 instance PP (LTerm VarInt) where
     pp = pp . fromLambdaB
+    pparseError str = case PA.parse (parseTerm Nothing) "" str of
+                        Left err -> Left err
+                        Right t -> Right (toLambdaB t)
 
 -- | Pretty prints a lambda term.
 --
@@ -130,27 +130,6 @@ pp' True rm _ (l :@: r)                     = PP.fsep [pp' True False [] l, pp' 
 pp' False _ _ (l :@: r)                     = PP.parens (pp' True True [] (l :@: r))
 pp' _ _ _ (LAbst _)                         = error "Lambda>>pp': Lonely LAbst"
 
--- | Takes a String and returns a Term
---
-parseLambda :: String -> LTerm VarString
-parseLambda str = let res = parse str
-                  in -- trace (show res)
-                        res
-
-parseLambdaB :: String -> LTerm VarInt
-parseLambdaB str = let res = parse str
-                  in -- trace (show res)
-                        toLambdaB res
-
-
--- | Throws an error, when the String can't be parsed
-parse ::  String -> LTerm VarString
-parse str = case parse' str of
-                Left err    -> error (show err)
-                Right term  -> term
-
-parse' :: String -> Either PA.ParseError (LTerm VarString)
-parse' = PA.parse (parseTerm Nothing) ""
 
 parseTerm :: Maybe (LTerm VarString) -> Parser (LTerm VarString)
 parseTerm Nothing = do
@@ -202,7 +181,7 @@ occurs _v (LAbst n)                  = error $ "CombLambda>>bracketAbstract: Lon
 
 freeVars :: LTerm VarString -> [VarString]
 freeVars (LVar n)        = [n]
-freeVars (LAbst n :@: t) = delete n (freeVars t)
+freeVars (LAbst n :@: t) = delete n (nub (freeVars t))
 freeVars (l :@: r)       = freeVars l ++ freeVars r
 freeVars (LAbst n)       = error $ "CombLambda>>freeVars: Lonely Abstraction " ++ show n
 
@@ -289,7 +268,7 @@ instance (Strategy s, ReductionContext c (LTerm VarString))  => Reduction (LTerm
 
 -- | Takes a string, parses it, applies normalOrderReduction and prints the result.
 reduceLambda :: String -> String
-reduceLambda = show . pp . reduceIt instrumentedContext NormalForm . parseLambda
+reduceLambda = show . pp . reduceIt instrumentedContext NormalForm . (pparse :: String -> LTerm VarInt)
 
 -----------------------------------------------------------------------------
 -- ** With de Bruijn indices

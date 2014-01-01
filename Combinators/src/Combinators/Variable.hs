@@ -3,7 +3,7 @@
 --
 -- Module      :  Variable
 -- Copyright   :  All rights reserved, Jürgen Nicklisch-Franken
--- License     :  GPL (Just (Version {versionBranch = [2], versionTags = []}))
+-- License     :  GPL 2
 --
 -- Maintainer  :  Jürgen Nicklisch-Franken
 -- Stability   :  provisional
@@ -56,7 +56,7 @@ type VarInt = Int
 instance Variable VarInt
 
 nameGen :: [String]
-nameGen = [ c: n | n <- ("" : map show [(1::Int)..]), c <- "uvwxyz"]
+nameGen = [ c: n | n <- ("" : map show [(1:: Int)..]), c <- "uvwxyz"]
 
 nameGenFV  :: [String]
-nameGenFV = map (\ s -> s ++ "'") nameGen
+nameGenFV = map (++ "'") nameGen

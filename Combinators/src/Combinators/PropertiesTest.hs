@@ -2,7 +2,7 @@
 --
 -- Module      :  Combinators.PropertiesTest
 -- Copyright   :  All rights reserved, Jürgen Nicklisch-Franken
--- License     :  GPL (Just (Version {versionBranch = [2], versionTags = []}))
+-- License     :  GPL 2
 --
 -- Maintainer  :  Jürgen Nicklisch-Franken
 -- Stability   :  provisional
@@ -20,6 +20,9 @@ import Test.HUnit.Base (Assertion)
 import Test.HUnit ((@=?), assertBool)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.Framework (Test)
+
+parseIKS :: String -> CTerm IKS
+parseIKS = pparse
 
 -- example
 testWeakEqual1 :: Assertion

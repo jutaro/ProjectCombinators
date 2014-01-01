@@ -3,7 +3,7 @@
 --
 -- Module      :  Combinators.CombLambda
 -- Copyright   :  All rights reserved, Jürgen Nicklisch-Franken
--- License     :  GPL (Just (Version {versionBranch = [2], versionTags = []}))
+-- License     :  GPL 2
 --
 -- Maintainer  :  Jürgen Nicklisch-Franken
 -- Stability   :  provisional

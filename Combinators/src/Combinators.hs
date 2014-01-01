@@ -22,6 +22,8 @@ module Combinators (
     ,module Combinators.Properties
     ,module Combinators.CombLambda
     ,module Combinators.CombGenerator
+    ,module Combinators.Types
+    ,module Combinators.TypeInference
 )
 
 where
@@ -35,5 +37,7 @@ import Combinators.Lambda
 import Combinators.Properties
 import Combinators.CombLambda
 import Combinators.CombGenerator
+import Combinators.Types
+import Combinators.TypeInference
 
 
