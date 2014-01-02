@@ -166,7 +166,7 @@ instance Basis KS where
 
 instance Basis basis => PP (CTerm basis) where
     pp = pp' False
-    pparseError = PA.parse (parseTerm Nothing) ""
+    pparser = parseTerm Nothing
 
 -- | Pretty prints a term.
 --

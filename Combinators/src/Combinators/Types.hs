@@ -55,7 +55,7 @@ instance BinaryTree SType where
 
 instance PP SType where
     pp = pp' False
-    pparseError = PA.parse (parseType []) ""
+    pparser = parseType []
 
 pp' :: Bool -> SType -> PP.Doc
 pp' True (a :->: b)   = PP.parens (pp' False (a :->: b))

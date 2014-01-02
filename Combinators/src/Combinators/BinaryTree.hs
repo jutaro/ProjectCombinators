@@ -16,7 +16,8 @@ module Combinators.BinaryTree where
 import Data.Maybe (isNothing)
 import Text.PrettyPrint (text, renderStyle, style, Doc, Style(..))
 import Text.PrettyPrint.HughesPJ (Mode(..))
-import Text.Parsec (ParseError)
+import Text.Parsec ((<|>), parse, ParseError)
+import Text.Parsec.String (Parser)
 
 -----------------------------------------------------------------------------
 -- * Binary tree class and a Zipper on it
@@ -28,7 +29,7 @@ import Text.Parsec (ParseError)
 
 class PP t where
     pp :: t -> Doc
-    pparseError :: String -> Either ParseError t
+    pparser :: Parser t
 
     pps :: t -> String
     pps = renderStyle style . pp
@@ -37,6 +38,8 @@ class PP t where
     ppsNoNewline :: t -> String
     ppsNoNewline = renderStyle style{mode = OneLineMode} . pp
 
+    pparseError :: String -> Either ParseError t
+    pparseError = parse pparser ""
     pparse :: String -> t
     pparse str = case pparseError str of
                     Left err -> error (show err)
@@ -45,9 +48,13 @@ class PP t where
 instance PP t => PP (Maybe t) where
     pp Nothing = text "Failed!"
     pp (Just t) = pp t
-    pparse str = case pparseError str of
-                    Left err -> Nothing
-                    Right t  -> Just t
+    pparser = parseMaybe pparser
+
+parseMaybe :: Parser t -> Parser (Maybe t)
+parseMaybe parser = do
+        v <- parser
+        return (Just v)
+    <|> return Nothing
 
 -----------------------------------------------------------------------------
 -- ** A class for a binary tree

@@ -45,6 +45,7 @@ import Data.Maybe (fromJust)
 import qualified Data.List as List
        (elemIndex, elem, intersect, nub)
 import Debug.Trace (trace)
+import Control.Monad (liftM)
 
 -----------------------------------------------------------------------------
 -- * Lambda calculus implementation
@@ -101,13 +102,11 @@ instance Variable v => Term (LTerm v) where
 
 instance PP (LTerm VarString) where
     pp = pp' True True []
-    pparseError = PA.parse (parseTerm Nothing) ""
+    pparser = parseTerm Nothing
 
 instance PP (LTerm VarInt) where
     pp = pp . fromLambdaB
-    pparseError str = case PA.parse (parseTerm Nothing) "" str of
-                        Left err -> Left err
-                        Right t -> Right (toLambdaB t)
+    pparser = liftM toLambdaB (parseTerm Nothing)
 
 -- | Pretty prints a lambda term.
 --

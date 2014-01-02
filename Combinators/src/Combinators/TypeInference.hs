@@ -1,5 +1,3 @@
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE DataKinds #-}
 -----------------------------------------------------------------------------
 --
 -- Module      :  Combinators.TypeInference
@@ -14,15 +12,24 @@
 --
 -----------------------------------------------------------------------------
 
+{-# LANGUAGE FlexibleInstances, DataKinds #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module Combinators.TypeInference (
     Typeable(..)
 ) where
 
 import Combinators.BinaryTree (PP(..), BinaryTree)
 import Combinators.Reduction (Term)
-import Combinators.Types
 import Combinators.Lambda
 import Combinators.Variable
+import Combinators.Types
+       (typeVarGen, SType(..), TypeAtom, SType)
+
+import Text.PrettyPrint
+       ((<>), parens, brackets, ($$), (<+>), text, braces, empty, Doc)
+import Text.Parsec.String (Parser)
+import qualified Text.Parsec as PA (char, many)
 
 -- import Debug.Trace (trace)
 trace :: a -> b -> b
@@ -36,6 +43,20 @@ trace _ s = s
 -- In this representation types may be unassigned
 type TypeEnv = [(VarString,SType)]
 
+instance PP TypeEnv where
+    pp          = brackets . ppEnv
+    pparser     = parseEnv
+
+instance PP (SType,TypeEnv) where
+    pp(st,te)   = parens (pp st <> text " , " <> pp te)
+    pparser     = do
+        PA.char '('
+        st <- pparser
+        PA.char ','
+        te <- pparser
+        PA.char ')'
+        return (st,te)
+
 -- | A substituor binds the type that should be substituted to a type variable
 type Substitutor = [(TypeAtom,SType)]
 
@@ -47,6 +68,26 @@ class (BinaryTree t, Term t) =>  Typeable t where
     inferSType :: t -> Maybe (SType, TypeEnv)
     -- ^ Infers just the simple type and environment of a Term or returns Nothing,
     -- if the term is not typeable.
+
+ppEnv :: TypeEnv -> Doc
+ppEnv []           = empty
+ppEnv ((ta,tp):tl) = braces (text ta <+> text "=" <+> pp tp) $$ ppEnv tl
+
+parseEnv :: Parser TypeEnv
+parseEnv = do
+   PA.char '['
+   r <- PA.many parseEnvEntry
+   PA.char ']'
+   return r
+
+parseEnvEntry :: Parser (TypeAtom,SType)
+parseEnvEntry = do
+    PA.char '('
+    l <- varParse
+    PA.char '='
+    r <- pparser
+    PA.char ')'
+    return (l,r)
 
 -----------------------------------------------------------------------------
 -- ** Lambda with Strings
