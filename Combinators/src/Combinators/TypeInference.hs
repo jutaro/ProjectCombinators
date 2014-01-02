@@ -18,13 +18,15 @@ module Combinators.TypeInference (
     Typeable(..)
 ) where
 
-import Combinators.BinaryTree (BinaryTree)
+import Combinators.BinaryTree (PP(..), BinaryTree)
 import Combinators.Reduction (Term)
 import Combinators.Types
 import Combinators.Lambda
 import Combinators.Variable
-import Data.Maybe (fromJust)
 
+-- import Debug.Trace (trace)
+trace :: a -> b -> b
+trace _ s = s
 
 -----------------------------------------------------------------------------
 -- * Type inference
@@ -63,20 +65,17 @@ substituteType subst (l :->: r) = substituteType subst l :->: substituteType sub
 
 -- | Apply a substitutor to an environment
 substituteEnv :: Substitutor -> TypeEnv -> TypeEnv
-substituteEnv subst env = map (substitute' subst) env
-  where
-    substitute' ((str,newType):rest) (str2,oldType) | str == str2 = (str,newType)
-                                                    | otherwise  = substitute' rest (str2,oldType)
-    substitute' [] pair                                          = pair
+substituteEnv subst env = map (\(n,t) -> (n,substituteType subst t)) env
 
 -- | Unify two types and returns just a substitution if possible,
 -- and Nothing if it is not possible
-unify :: SType -> SType -> Maybe Substitutor
-unify t1 t2 | t1 == t2                       = Just []
-unify (SAtom s) b | not (elem s (typeVars b)) = Just [(s,b)]
+unify,unify' :: SType -> SType -> Maybe Substitutor
+unify t1 t2 = trace ("unify t1: " ++ pps t1 ++ " t2: " ++ pps t2) $ unify' t1 t2
+unify' t1 t2 | t1 == t2                       = Just []
+unify' (SAtom s) b | not (elem s (typeVars b)) = Just [(s,b)]
                   | otherwise               = Nothing
-unify (l :->: r) (SAtom s)                   = unify (SAtom s) (l :->: r)
-unify (l1 :->: r1) (l2 :->: r2)               = case unify r1 r2 of
+unify' (l :->: r) (SAtom s)                   = unify (SAtom s) (l :->: r)
+unify' (l1 :->: r1) (l2 :->: r2)               = case unify r1 r2 of
                                                 Nothing -> Nothing
                                                 Just substr ->
                                                     case unify (substituteType substr l1)
@@ -87,41 +86,47 @@ unify (l1 :->: r1) (l2 :->: r2)               = case unify r1 r2 of
 
 instance Typeable (LTerm VarString) where
     inferSTypeClosed term | isClosed term = case inferSType' (0,[]) term of
-                                                Just (_,r) -> Just r
+                                                Just (_,_,r) -> Just r
                                                 Nothing    -> Nothing
                           | otherwise     = error "TypeInference>>inferSTypeClosed: Term has free varibles"
     inferSType term   = let env = map (\(v,i) -> (v, SAtom (typeVarGen !! i))) $ zip (freeVars term) [0..]
                         in  case inferSType' (length env,env) term of
-                                Just ((_,env),r) -> Just (r,env)
+                                Just (_,env,r) -> Just (r,env)
                                 Nothing    -> Nothing
 
-inferSType' :: (Int,TypeEnv) -> LTerm VarString -> Maybe ((Int,TypeEnv), SType)
-inferSType' (index,env) (LVar s)  =
+inferSType',inferSType'' :: (Int,TypeEnv) -> LTerm VarString -> Maybe (Int,TypeEnv, SType)
+inferSType' (index,env) t = trace ("inferStype' index: " ++ show index ++ " env: " ++ show env ++
+                                " term: " ++ pps t) $ inferSType'' (index,env) t
+
+inferSType'' (index,env) (LVar s) =
     case lookup s env of
-        Nothing -> error ("TypeInference>>inferSType': Unbound variable: " ++ s ++ " env: " ++ show env)
-        Just t  -> Just ((index, env),t)
+        Nothing -> error ("TypeInference>>inferSType': Unbound variableV: " ++ s ++ " env: " ++ show env)
+        Just t  -> Just (index, env,t)
 
-inferSType' (index,env) (LAbst s :@: t) =
+inferSType'' (index,env) (LAbst s :@: term) =
     let newType = SAtom $ typeVarGen !! index
-    in case inferSType' (index + 1,(s,newType):env) t of
+    in case inferSType' (index + 1,(s,newType):env) term of
+                Nothing                  -> Nothing
+                Just (_ind, env',nt)     -> case lookup s env' of
+                                                Nothing -> error ("TypeInference>>inferSType': Unbound variableL: "
+                                                                ++ s ++ " env: " ++ show env')
+                                                Just t  -> Just (index,tail env',t :->: nt)
+
+inferSType'' (index,env) (l :@: r) =
+    let newType = SAtom $ typeVarGen !! index
+    in case inferSType' (index+1,env) r of
+        Nothing                   -> Nothing
+        Just (index',env',tr) ->
+            case inferSType' (index',env') l of
                 Nothing                 -> Nothing
-                Just ((_ind,env'),nt)   -> Just ((index,tail env'),newType :->: nt)
-
-inferSType' (index,env) (l :@: r) =
-    case inferSType' (index,env) l of
-        Nothing                 -> Nothing
-        Just ((index',env'),tl) ->
-            case inferSType' (index',env') r of
-                Nothing                   -> Nothing
-                Just ((index'',env''),tr) -> case unify (SAtom "_res") (tl :->: tr) of
-                                                Nothing -> Nothing
-                                                Just subst -> case lookup "_res" subst of
-                                                                Nothing -> error $ "Missing _res" ++ show subst
-                                                                Just t -> Just ((index'',substituteEnv subst env''),
-                                                                    substituteType subst t
-                                                                        )  -- Another infer type?
-inferSType' _ (LAbst _) = error "LambdaType>>inferSType: Lonely LAbst"
-
+                Just (index'',env'',tl) ->
+                    case unify tl (tr :->: newType)  of
+                        Nothing -> Nothing
+                        Just subst ->
+                            let newEnv = substituteEnv subst env''
+                            in trace ("inferStypeA index: " ++ show index'' ++ " env: " ++ show newEnv ++
+                                            " term: " ++ pps newType) $ Just (index'',newEnv,newType)
+inferSType'' _ (LAbst _) = error "LambdaType>>inferSType: Lonely LAbst"
 
 -----------------------------------------------------------------------------
 -- ** Combinators
