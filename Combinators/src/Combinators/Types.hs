@@ -12,19 +12,28 @@
 --
 -----------------------------------------------------------------------------
 
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE GADTs, StandaloneDeriving #-}
+{-# LANGUAGE DataKinds, GADTs, StandaloneDeriving, TypeSynonymInstances, FlexibleInstances #-}
 
 module Combinators.Types (
     SType(..),
     TypeAtom,
-    typeVarGen
+    typeVarGen,
+    canonicalizeType,
+    canonicalizeTypeEnv,
+    TypeEnv,
+    Substitutor,
+    substituteType,
+    substituteEnv,
+    typeVars
 ) where
 
 import Combinators.BinaryTree
 import qualified Text.PrettyPrint as PP (text, sep, parens, Doc)
 import qualified Text.Parsec as PA
 import Text.Parsec.String (Parser)
+import Combinators.Variable (varParse, VarString)
+import Text.PrettyPrint
+       (($$), (<+>), braces, empty, Doc, text, (<>), parens, brackets)
 
 -----------------------------------------------------------------------------
 -- * Simple Types
@@ -35,11 +44,8 @@ data SType where
     SAtom :: TypeAtom -> SType
     (:->:) :: SType -> SType -> SType
 
--- Bind application to the left.
+-- Bind type constructor to the right.
 infixr 5 :->:
-
-typeVarGen :: [String]
-typeVarGen = [ c: n | n <- ("" : map show [(1:: Int)..]), c <- "abcdefg"]
 
 deriving instance Show SType
 deriving instance Eq SType
@@ -49,6 +55,31 @@ instance BinaryTree SType where
     decompose (a :->: b) = Just (a,b)
     decompose (SAtom _) = Nothing
     a @@ b              = a :->: b
+
+typeVarGen :: [String]
+typeVarGen = [ c: n | n <- ("" : map show [(1:: Int)..]), c <- "abcdefg"]
+
+canonicalizeType :: SType -> SType
+canonicalizeType t = (\(_,_,r) -> r) $ canonicalizeType' 0 [] t
+
+canonicalizeTypeEnv :: (SType,TypeEnv a) -> (SType,TypeEnv a)
+canonicalizeTypeEnv (t,enviro) =
+    let (index,env,res) = canonicalizeType' 0 [] t
+        (_,_,res'') = foldr (\(k,t) (i,env,newEnv) ->
+                                let (index',env',res') = canonicalizeType' i env t
+                                in (index',env',(k,res') : newEnv))
+                            (index,env,[]) enviro
+    in (res,res'')
+
+canonicalizeType' :: Int -> [(String,Int)] -> SType -> (Int, [(String,Int)], SType)
+canonicalizeType' i env (SAtom s) =
+    case lookup s env of
+        Just ind ->  (i,env,SAtom (typeVarGen !! ind))
+        Nothing -> (i+1,(s,i):env,SAtom (typeVarGen !! i))
+canonicalizeType' i env (l :->: r) =
+    let (i',env',l')   = canonicalizeType' i env l
+        (i'',env'',r') = canonicalizeType' i' env' r
+    in (i'',env'',l' :->: r')
 
 -----------------------------------------------------------------------------
 -- ** Printing and parsing
@@ -91,4 +122,66 @@ sAtomParse = do
         return (SAtom (start:rest))
     PA.<?> "sAtom"
 
+-----------------------------------------------------------------------------
+-- ** Type environment
 
+
+-- | A type environment binds atomic types, represented as Strings to types.
+-- In this representation types may be unassigned
+type TypeEnv v = [(v,SType)]
+
+instance PP (TypeEnv VarString) where
+    pp          = brackets . ppEnv
+    pparser     = parseEnv
+
+instance PP (SType,TypeEnv VarString) where
+    pp(st,te)   = parens (pp st <> text " , " <> pp te)
+    pparser     = do
+        PA.char '('
+        st <- pparser
+        PA.char ','
+        te <- pparser
+        PA.char ')'
+        return (st,te)
+
+ppEnv :: TypeEnv VarString -> Doc
+ppEnv []           = empty
+ppEnv ((ta,tp):tl) = braces (text ta <+> text "=" <+> pp tp) $$ ppEnv tl
+
+parseEnv :: Parser (TypeEnv VarString)
+parseEnv = do
+   PA.char '['
+   r <- PA.many parseEnvEntry
+   PA.char ']'
+   return r
+
+parseEnvEntry :: Parser (VarString,SType)
+parseEnvEntry = do
+    PA.char '('
+    l <- varParse
+    PA.char '='
+    r <- pparser
+    PA.char ')'
+    return (l,r)
+
+-- | A substituor binds the type that should be substituted to a type variable
+type Substitutor = [(TypeAtom,SType)]
+
+-----------------------------------------------------------------------------
+-- ** Helpers
+
+-- | List all type atoms of a type
+typeVars :: SType -> [TypeAtom]
+typeVars (SAtom n)       = [n]
+typeVars (l :->: r)       = typeVars l ++ typeVars r
+
+-- | Apply a substitutor to a type
+substituteType :: Substitutor -> SType -> SType
+substituteType subst (SAtom a) = case lookup a subst of
+                                    Nothing -> (SAtom a)
+                                    Just replace -> replace
+substituteType subst (l :->: r) = substituteType subst l :->: substituteType subst r
+
+-- | Apply a substitutor to an environment
+substituteEnv :: Substitutor -> TypeEnv v -> TypeEnv v
+substituteEnv subst env = map (\(n,t) -> (n,substituteType subst t)) env

@@ -173,7 +173,7 @@ instance Basis basis => PP (CTerm basis) where
 
 pp' :: Basis basis => Bool -> CTerm basis -> PP.Doc
 pp' _ (Const c)     = PP.text (combName c)
-pp' _ (Var v)       = PP.text (varPp v)
+pp' _ (Var v)       = PP.text v
 pp' False (l :@ r)  = PP.sep [pp' False l, pp' True r]
 pp' True (l :@ r)   = PP.text "("  PP.<> PP.sep [pp' False l, pp' True r] PP.<> PP.text ")"
 
