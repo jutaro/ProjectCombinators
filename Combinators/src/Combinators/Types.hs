@@ -12,19 +12,21 @@
 --
 -----------------------------------------------------------------------------
 
-{-# LANGUAGE DataKinds, GADTs, StandaloneDeriving, TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE DataKinds, GADTs, StandaloneDeriving, TypeSynonymInstances, FlexibleInstances, Rank2Types #-}
 
 module Combinators.Types (
     SType(..),
     TypeAtom,
+    Typeable(..),
     typeVarGen,
     canonicalizeType,
-    canonicalizeTypeEnv,
-    TypeEnv,
+    canonicalizeTypeContext,
+    TypeContext,
     Substitutor,
     substituteType,
     substituteEnv,
-    typeVars
+    typeVars,
+    parseType
 ) where
 
 import Combinators.BinaryTree
@@ -34,6 +36,7 @@ import Text.Parsec.String (Parser)
 import Combinators.Variable (varParse, VarString)
 import Text.PrettyPrint
        (($$), (<+>), braces, empty, Doc, text, (<>), parens, brackets)
+import Combinators.Reduction (Term)
 
 -----------------------------------------------------------------------------
 -- * Simple Types
@@ -56,14 +59,26 @@ instance BinaryTree SType where
     decompose (SAtom _) = Nothing
     a @@ b              = a :->: b
 
+-----------------------------------------------------------------------------
+-- * Type inference
+
+-- | A class that describe a possible Typeable Term
+class Term t =>  Typeable t where
+    typeof :: t -> Maybe (SType, TypeContext VarString)
+    -- ^ Infers just the simple type and environment of a Term or returns Nothing,
+    -- if the term is not typeable.
+    typeofC :: t -> Maybe SType
+    -- ^ Infers just the simple type of a closed Term or returns Nothing, if the
+    -- term is not typeable
+
 typeVarGen :: [String]
 typeVarGen = [ c: n | n <- ("" : map show [(1:: Int)..]), c <- "abcdefg"]
 
 canonicalizeType :: SType -> SType
 canonicalizeType t = (\(_,_,r) -> r) $ canonicalizeType' 0 [] t
 
-canonicalizeTypeEnv :: (SType,TypeEnv a) -> (SType,TypeEnv a)
-canonicalizeTypeEnv (t,enviro) =
+canonicalizeTypeContext :: (SType,TypeContext a) -> (SType,TypeContext a)
+canonicalizeTypeContext (t,enviro) =
     let (index,env,res) = canonicalizeType' 0 [] t
         (_,_,res'') = foldr (\(k,t) (i,env,newEnv) ->
                                 let (index',env',res') = canonicalizeType' i env t
@@ -128,13 +143,13 @@ sAtomParse = do
 
 -- | A type environment binds atomic types, represented as Strings to types.
 -- In this representation types may be unassigned
-type TypeEnv v = [(v,SType)]
+type TypeContext v = [(v,SType)]
 
-instance PP (TypeEnv VarString) where
+instance PP (TypeContext VarString) where
     pp          = brackets . ppEnv
     pparser     = parseEnv
 
-instance PP (SType,TypeEnv VarString) where
+instance PP (SType,TypeContext VarString) where
     pp(st,te)   = parens (pp st <> text " , " <> pp te)
     pparser     = do
         PA.char '('
@@ -144,11 +159,11 @@ instance PP (SType,TypeEnv VarString) where
         PA.char ')'
         return (st,te)
 
-ppEnv :: TypeEnv VarString -> Doc
+ppEnv :: TypeContext VarString -> Doc
 ppEnv []           = empty
 ppEnv ((ta,tp):tl) = braces (text ta <+> text "=" <+> pp tp) $$ ppEnv tl
 
-parseEnv :: Parser (TypeEnv VarString)
+parseEnv :: Parser (TypeContext VarString)
 parseEnv = do
    PA.char '['
    r <- PA.many parseEnvEntry
@@ -183,5 +198,5 @@ substituteType subst (SAtom a) = case lookup a subst of
 substituteType subst (l :->: r) = substituteType subst l :->: substituteType subst r
 
 -- | Apply a substitutor to an environment
-substituteEnv :: Substitutor -> TypeEnv v -> TypeEnv v
+substituteEnv :: Substitutor -> TypeContext v -> TypeContext v
 substituteEnv subst env = map (\(n,t) -> (n,substituteType subst t)) env

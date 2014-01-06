@@ -23,7 +23,8 @@ module Combinators (
     ,module Combinators.CombLambda
     ,module Combinators.CombGenerator
     ,module Combinators.Types
-    ,module Combinators.TypeInference
+    ,module Combinators.LambdaTyped
+
 )
 
 where
@@ -38,6 +39,6 @@ import Combinators.Properties
 import Combinators.CombLambda
 import Combinators.CombGenerator
 import Combinators.Types
-import Combinators.TypeInference
+import Combinators.LambdaTyped
 
 
