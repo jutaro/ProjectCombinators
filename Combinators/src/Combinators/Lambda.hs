@@ -27,6 +27,7 @@ module Combinators.Lambda (
 -----------------------------------------------------------------------------
 -- ** Convenience
     reduceLambda,
+    canonicalizeLambda,
 -----------------------------------------------------------------------------
 -- ** De Bruijn indices
     toLambdaB,
@@ -99,6 +100,24 @@ instance Variable v => Term (LTerm v) where
     isTerminal _                = False
 -----------------------------------------------------------------------------
 -- ** Priniting and parsing
+
+canonicalizeLambda :: LTerm VarString -> LTerm VarString
+canonicalizeLambda t = (\(_,_,r) -> r) $ canonicalizeLambda' 0 [] t
+
+canonicalizeLambda' :: Int -> [(String,Int)] -> LTerm VarString -> (Int, [(String,Int)], LTerm VarString)
+canonicalizeLambda' i env (LVar s) =
+    case lookup s env of
+        Just ind ->  (i,env,LVar (nameGen !! ind))
+        Nothing -> error ("Lambda>>canonicalizeLambda: Not found: " ++ s)
+canonicalizeLambda' i env (LAbst s :@: r) =
+    let (_i',_env',r') = canonicalizeLambda' (i+1) ((s,i):env) r
+    in (i,env,r')
+canonicalizeLambda' i env (l :@: r) =
+    let (i',env',l')   = canonicalizeLambda' i env l
+        (i'',env'',r') = canonicalizeLambda' i' env' r
+    in (i'',env'',l' :@: r')
+canonicalizeLambda' _i _env (LAbst _s) = error "Lambda>>canonicalizeLambda: Lonely Abst"
+
 
 instance PP (LTerm VarString) where
     pp = pp' True True []

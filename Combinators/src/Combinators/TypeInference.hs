@@ -16,14 +16,19 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Combinators.TypeInference (
-    Typeable(..)
+    Typeable(..),
+    genList
 ) where
 
 import Combinators.BinaryTree (PP(..))
-import Combinators.Reduction (Term)
+import Combinators.Reduction
+       (NormalForm(..), instrumentedContext, reduceIt, Term)
 import Combinators.Lambda
 import Combinators.Variable
 import Combinators.Types
+import Combinators.CombGenerator (genCombs)
+import Combinators.CombLambda (combToLambda)
+import Combinators.Combinator (CTerm, KS)
 
 -- import Debug.Trace (trace)
 trace :: a -> b -> b
@@ -44,7 +49,9 @@ class Term t =>  Typeable t where
 -----------------------------------------------------------------------------
 -- ** Lambda with Strings
 
-
+instance Typeable (LTerm VarInt) where
+    inferSType term = inferSType $ fromLambdaB term
+    inferSTypeClosed term = inferSTypeClosed $ fromLambdaB term
 
 instance Typeable (LTerm VarString) where
     inferSTypeClosed term | isClosed term = case inferSType' (0,[]) term of
@@ -101,6 +108,14 @@ unify (l1 :->: r1) (l2 :->: r2)                 = case unify r1 r2 of
                                                         Nothing -> Nothing
                                                         Just substl -> Just (substl ++ substr)
 
+-- genList :: Int -> [(String, String, String, String, String)]
+genList n = map (\c ->
+                    let reducedCombinator = reduceIt instrumentedContext NormalForm c
+                        lambda            = combToLambda reducedCombinator
+                        reducedLambda     = reduceIt instrumentedContext NormalForm (toLambdaB lambda)
+                        itype             = inferSType lambda
+                    in (pps c,pps reducedCombinator{-,pps lambda, pps reducedLambda,pps itype-} ))
+                $ take n (genCombs :: [CTerm KS])
 
 -----------------------------------------------------------------------------
 -- ** Combinators
