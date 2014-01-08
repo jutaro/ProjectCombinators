@@ -46,7 +46,7 @@ class PP t where
                     Right t  -> t
 
 instance PP t => PP (Maybe t) where
-    pp Nothing = text "Failed!"
+    pp Nothing = text "Nothing"
     pp (Just t) = pp t
     pparser = parseMaybe pparser
 

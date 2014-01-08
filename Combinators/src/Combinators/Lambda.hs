@@ -11,7 +11,7 @@
 -----------------------------------------------------------------------------
 
 {-# LANGUAGE FlexibleInstances, GADTs, StandaloneDeriving, FlexibleContexts, MultiParamTypeClasses,
-      ScopedTypeVariables #-}
+      ScopedTypeVariables, UndecidableInstances #-}
 
 
 module Combinators.Lambda (
@@ -44,28 +44,17 @@ import Combinators.Reduction
 import Combinators.Types
 
 import Text.Parsec.String (Parser)
-import qualified Text.PrettyPrint as PP
 import qualified Text.Parsec as PA
+import qualified Text.PrettyPrint as PP
 import Data.List (nub, delete)
 import Data.Maybe (fromJust)
 import qualified Data.List as List
        (elemIndex, elem, intersect, nub)
-import Debug.Trace (trace)
 import Control.Monad (liftM)
 
 -----------------------------------------------------------------------------
 -- * Lambda calculus implementation
 -----------------------------------------------------------------------------
-
-class Eq t => Typed t where
-     typed :: t -> Maybe SType
-
-data Untyped = Untyped
-    deriving (Eq,Ord,Show)
-
-instance Typed Untyped where
-    typed _ = Nothing
-
 
 -----------------------------------------------------------------------------
 -- ** LTerm type
@@ -87,10 +76,16 @@ data LTerm v t where
       LAbst :: Typed t => VarString -> t -> LTerm v t
       (:@:) :: Variable v => LTerm v t -> LTerm v t -> LTerm v t
 
-
 deriving instance Show t => Show (LTerm v t)
+--instance PP (LTerm v t) => Show (LTerm v t) where
+--    show = pps
 
-deriving instance Eq t => Eq (LTerm VarInt t)
+-- | Names of local variables (abst) are not important for equality
+instance Eq t => Eq (LTerm VarInt t) where
+    LVar vl == LVar vr = vl == vr
+    LAbst _sl tl == LAbst _sr tr = tl == tr
+    (ll :@: lr) == (rl :@: rr) = ll == rl && lr == rr
+    _ == _ = False
 
 instance Eq t => Eq (LTerm VarString t) where
     a == b = toLambdaB a == toLambdaB b
@@ -114,9 +109,9 @@ instance Variable v => Term (LTerm v t) where
     isTerminal (LVar _ :@: _r)  = True
     isTerminal (LAbst _ _ :@: _r) = True
     isTerminal _                = False
+
 -----------------------------------------------------------------------------
 -- ** Priniting and parsing
-
 
 instance PP (LTerm VarString Untyped) where
     pp = pp' True True []
@@ -129,10 +124,7 @@ instance PP (LTerm VarInt Untyped) where
 -- | Pretty prints a lambda term.
 --
 -- Avoids printing outer parenthesis and left parenthesis.
---ppl :: Variable v => LTerm v -> String
---ppl t = PP.render (pp' True True [] t)
-
--- | The first Boolean value is true if it is a left subterm.
+-- The first Boolean value is true if it is a left subterm.
 -- The second Boolean Term is true, if it  is a right most subterm
 --    (which is closed with brackets anyway)
 pp' :: Bool -> Bool -> [VarString] -> LTerm VarString Untyped -> PP.Doc
@@ -212,21 +204,42 @@ isClosed :: LTerm VarString t -> Bool
 isClosed = null . freeVars
 
 canonicalizeLambda :: LTerm VarString t -> LTerm VarString t
-canonicalizeLambda t = (\(_,_,r) -> r) $ canonicalizeLambda' 0 [] t
+canonicalizeLambda t =
+    let fvs = freeVars t
+        env = zip fvs [0..]
+    in (\(_,_,r) -> r) $ canonicalizeLambda' (length fvs) env t
 
 canonicalizeLambda' :: Int -> [(String,Int)] -> LTerm VarString t -> (Int, [(String,Int)], LTerm VarString t)
 canonicalizeLambda' i env (LVar s) =
     case lookup s env of
         Just ind ->  (i,env,LVar (nameGen !! ind))
-        Nothing -> error ("Lambda>>canonicalizeLambda: Not found: " ++ s)
-canonicalizeLambda' i env (LAbst s _ :@: r) =
+        Nothing -> error ("Lambda>>canonicalizeLambda: Not closed, found: " ++ s)
+canonicalizeLambda' i env (LAbst s t :@: r) =
     let (_i',_env',r') = canonicalizeLambda' (i+1) ((s,i):env) r
-    in (i,env,r')
+    in (i,env,(LAbst (nameGen !! i) t :@: r'))
 canonicalizeLambda' i env (l :@: r) =
     let (i',env',l')   = canonicalizeLambda' i env l
         (i'',env'',r') = canonicalizeLambda' i' env' r
     in (i'',env'',l' :@: r')
 canonicalizeLambda' _i _env (LAbst _s _) = error "Lambda>>canonicalizeLambda: Lonely Abst"
+
+-- | Because of disappearing free vars during reduction two equal Lambda deBruijn representations can become
+-- unequal if not canonicalized
+
+canonicalizeLambdaB :: LTerm VarInt t -> LTerm VarInt t
+canonicalizeLambdaB t = undefined
+{-
+    in canonicalizeLambdaB' 0 t
+  where
+    canonicalizeLambdaB' (_ind,env) (LVar str) = case List.lookup str env of
+                                                    Just i -> (LVar i)
+                                                    Nothing -> error ""
+    canonicalizeLambdaB' (ind,env) (LAbst str ty :@: t) = let newTerm = toLambdaB' (ind+1,((str,ind):env)) t
+                                                in LAbst str ty :@: newTerm
+    canonicalizeLambdaB' (ind,env) (lt :@: rt)          = toLambdaB' (ind,env) lt :@:
+                                                toLambdaB' (ind,env) rt
+    canonicalizeLambdaB' _ (LAbst n _)                  = error $ "Lambda>>toLambdaB': Lonely Abstraction " ++ show n
+-}
 
 -----------------------------------------------------------------------------
 -- ** Substitution
@@ -308,23 +321,19 @@ reduceLambda = show . pp . reduceIt instrumentedContext NormalForm . (pparse :: 
 -- ** With de Bruijn indices
 
 toLambdaB :: LTerm VarString t -> LTerm VarInt t
-toLambdaB = fst . toLambdaB' [] []
+toLambdaB t =
+    let fvs = freeVars t
+    in toLambdaB' fvs t
   where
-    toLambdaB' env fvEnv (LVar str)        =
-                                case List.elemIndex str env of
-                                    Just i -> (LVar i,fvEnv)
-                                    Nothing -> case List.elemIndex str fvEnv of
-                                                Just i -> (LVar (length env + i), fvEnv)
-                                                Nothing -> let fvEnv' = fvEnv ++ [str]
-                                                          in (LVar (length env + length fvEnv' - 1), fvEnv')
-    toLambdaB' env fvEnv (LAbst str ty :@: t) =
-                                let (newTerm,fvEnv') = toLambdaB' (str:env) fvEnv t
-                                in (LAbst str ty :@: newTerm,fvEnv')
-    toLambdaB' env fvEnv (lt :@: rt)       =
-                                let (l',fvEnv')  = toLambdaB' env fvEnv lt
-                                    (r',fvEnv'') = toLambdaB' env fvEnv' rt
-                                in (l' :@: r', fvEnv'')
-    toLambdaB' _env _fvEnv (LAbst n _)       = error $ "Lambda>>toLambdaB': Lonely Abstraction " ++ show n
+    toLambdaB' :: [String] -> LTerm VarString t -> LTerm VarInt t
+    toLambdaB' env (LVar str)           = case List.elemIndex str env of
+                                                    Just i -> (LVar i)
+                                                    Nothing -> error ""
+    toLambdaB' env (LAbst str ty :@: t) = let newTerm = toLambdaB' (str:env) t
+                                                in LAbst str ty :@: newTerm
+    toLambdaB' env (lt :@: rt)          = toLambdaB' env lt :@:
+                                                toLambdaB' env rt
+    toLambdaB' _ (LAbst n _)            = error $ "Lambda>>toLambdaB': Lonely Abstraction " ++ show n
 
 fromLambdaB :: LTerm VarInt t -> LTerm VarString t
 fromLambdaB = fromLambdaB' []
@@ -348,18 +357,18 @@ _      !!! n | n < 0 =  Nothing
 -- ** Reduction de Bruijn
 
 isFreeVar :: Int -> LTerm VarInt t -> Bool
-isFreeVar c (LVar i)             = i == c
-isFreeVar c (LAbst _str _ :@: t)   = isFreeVar (c+1) t
-isFreeVar c (l :@: r)            = isFreeVar c l || isFreeVar c r
-isFreeVar _c (LAbst n _)           = error $ "Lambda>>isFreeVar: Lonely Abstraction " ++ show n
+isFreeVar c (LVar i)              = i == c
+isFreeVar c (LAbst _str _ :@: t)  = isFreeVar (c+1) t
+isFreeVar c (l :@: r)             = isFreeVar c l || isFreeVar c r
+isFreeVar _c (LAbst n _)          = error $ "Lambda>>isFreeVar: Lonely Abstraction " ++ show n
 
 termShift :: Int -> LTerm VarInt t -> LTerm VarInt t
 termShift d t = walk 0 t
   where
-    walk c (LVar i) | i >= c     = LVar (i+d)
-                    | otherwise = LVar i
-    walk c (LAbst str ty :@: t)    = LAbst str ty :@: walk (c+1) t
-    walk c (l :@: r)            = walk c l :@: walk c r
+    walk c (LVar i) | i >= c       = LVar (i+d)
+                    | otherwise   = LVar i
+    walk c (LAbst str ty :@: t)   = LAbst str ty :@: walk (c+1) t
+    walk c (l :@: r)              = walk c l :@: walk c r
     walk _c (LAbst n _)           = error $ "Lambda>>termShift: Lonely Abstraction " ++ show n
 
 -- | The substitution of a variable "var" with a term "replace" in the matched term
@@ -369,9 +378,9 @@ substituteb var replace t = walk 0 t
   where
     walk c (LVar v) | v == var + c  = termShift c replace
                     | otherwise    = LVar v
-    walk c (LAbst v ty :@: t)         = LAbst v ty :@: walk (c+1) t
+    walk c (LAbst v ty :@: t)      = LAbst v ty :@: walk (c+1) t
     walk c (x :@: y)               = walk c x :@: walk c y
-    walk _c (LAbst _ _)              = error "Lambda>>substituteb: Lonely LAbst"
+    walk _c (LAbst _ _)            = error "Lambda>>substituteb: Lonely LAbst"
 
 substituteTop :: LTerm VarInt t -> LTerm VarInt t -> LTerm VarInt t
 substituteTop s t = termShift (-1) (substituteb 0 (termShift 1 s) t)
@@ -382,7 +391,7 @@ instance (Strategy s, ReductionContext c (LTerm VarInt t))  => Reduction (LTerm 
             (((LAbst _ _) :@: b) :@: c) ->
                 case c of
                     LVar 0 | not (isFreeVar 0 b)
-                        -> trace "etaB" $ return (Just $ zipper {zipSelected = termShift (-1) b})
+                        -> return (Just $ zipper {zipSelected = termShift (-1) b})
                             -- eta redex
                     _   -> return (Just $ zipper {zipSelected = substituteTop c b})
                             -- beta redex

@@ -29,21 +29,11 @@ import Test.Framework.Providers.HUnit (testCase)
 
 -- ** Testing
 
-instance Arbitrary (LTerm VarString Untyped) where
-    arbitrary = frequency
-        [(8,liftM LVar (elements ["u","v","w","x","y","z"]))
-        ,(6,liftM2 (:@:) arbitrary arbitrary)
-        ,(8,liftM2 ((:@:) . flip LAbst Untyped) (elements ["u","v","w","x","y","z"]) arbitrary)
-        ]
-
---  For any term: print and parse give the original term
-prop_printParse :: LTerm VarString Untyped -> Bool
-prop_printParse term = --trace ("\n\n" ++ ppl term ++ "\n" ++ ppl (parseLambda (ppl term))
-                       --     ++ "\n\n" ++ show term ++ "\n" ++ show (parseLambda (ppl term))) $
-                            term == pparse ((show . pp) term)
 
 testLambda :: [Test]
 testLambda = [testProperty "prop_printParse" prop_printParse
+             , testProperty "prop_lambdaB" prop_lambdaB
+             , testProperty "prop_testReduction" prop_testReduction
              , testCase "testReduction1" testReduction1
              , testCase "testReduction2" testReduction2
              , testCase "testReduction3" testReduction3
@@ -71,6 +61,28 @@ testLambda = [testProperty "prop_printParse" prop_printParse
 
              ]
 
+instance Arbitrary (LTerm VarString Untyped) where
+    arbitrary = frequency
+        [(8,liftM LVar (elements ["u","v","w","x","y","z"]))
+        ,(6,liftM2 (:@:) arbitrary arbitrary)
+        ,(8,liftM2 ((:@:) . flip LAbst Untyped) (elements ["u","v","w","x","y","z"]) arbitrary)
+        ]
+
+--  For any term: print and parse give the original term
+prop_printParse :: LTerm VarString Untyped -> Bool
+prop_printParse term = --trace ("\n\n" ++ ppl term ++ "\n" ++ ppl (parseLambda (ppl term))
+                       --     ++ "\n\n" ++ show term ++ "\n" ++ show (parseLambda (ppl term))) $
+                            term == pparse ((show . pp) term)
+
+prop_lambdaB :: LTerm VarString Untyped -> Bool
+prop_lambdaB term = --trace ("\n\n" ++ ppl term ++ "\n" ++ ppl (parseLambda (ppl term))
+                       --     ++ "\n\n" ++ show term ++ "\n" ++ show (parseLambda (ppl term))) $
+                            term == fromLambdaB (toLambdaB term)
+
+prop_testReduction :: LTerm VarString Untyped -> Bool
+prop_testReduction term = (case reduceS term of
+                            Nothing -> Nothing
+                            Just t -> Just (toLambdaB t))  == reduceS (toLambdaB term)
 testReduction1 :: Assertion
 testReduction1 =
     (pparse :: String -> LTerm VarString Untyped) "y y y" @=? (reduceIt instrumentedContext NormalForm . pparse) "(\\x.x x) y y"

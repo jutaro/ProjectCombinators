@@ -28,8 +28,8 @@ import Test.Framework
 
 main :: IO ()
 main = defaultMain $
-            testCombinators
-            ++ testLambda
+            -- testCombinators
+            [] ++ testLambda
             ++ testTypes
 
 testCombinators :: [Test]

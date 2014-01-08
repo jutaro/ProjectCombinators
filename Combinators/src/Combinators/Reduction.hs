@@ -34,6 +34,7 @@ module Combinators.Reduction (
     Reduction (..),
     reduceCont,
     reduce,
+    reduceS,
     reduceIt,
     reduceOnceCont,
     reduceOnce
@@ -43,7 +44,7 @@ import Combinators.BinaryTree
 import Data.Functor.Identity
 import Control.Monad (liftM)
 import Control.Monad.Trans.State
-import Debug.Trace (trace)
+-- import Debug.Trace (trace)
 import qualified Data.Set as Set (member, insert, empty, Set)
 
 -----------------------------------------------------------------------------
@@ -140,8 +141,8 @@ maxcount = 1000
 
 instance (PP t, BinaryTree t, Ord t) => ReductionContext (InstrumentedContext t) t  where
     runContext tracing =
-        let (a, (s,_i,_l)) = runState tracing (id,0,Set.empty)
-        in  trace (take 3000 (s "")) a
+        let (a, (_s,_i,_l)) = runState tracing (id,0,Set.empty)
+        in  {-trace (take 3000 (s ""))-} a
     startReduction tz = do
         let t = unzipper tz
         modify (\(log,count,l) -> (log . showString "\nstart: " . ppsh t, count,Set.insert t l))
@@ -205,6 +206,8 @@ reduceCont s t = do
 reduce :: forall c t s. (ReductionContext c t, Reduction t s c) => c (Maybe t) -> s -> t -> Maybe t
 reduce _c s t =  (runContext :: c (Maybe t) -> Maybe t) (reduceCont s t)
 
+reduceS :: (Reduction t NormalForm (InstrumentedContext t), Term t) =>  t -> Maybe t
+reduceS = reduce instrumentedContext NormalForm
 
 --  This is not guaranteed to terminate.
 reduceIt :: (ReductionContext c t, Reduction t s c) => c (Maybe t) -> s -> t -> t

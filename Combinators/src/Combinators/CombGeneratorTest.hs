@@ -27,8 +27,8 @@ import Debug.Trace (trace)
 
 instance Arbitrary (CTerm KS) where
     arbitrary = frequency
-        [(2,liftM Const (elements primCombs)),
-            (1,liftM2 (:@) arbitrary arbitrary)]
+        [(7,liftM Const (elements primCombs)),
+            (3,liftM2 (:@) arbitrary arbitrary)]
 
 prop_rankTreeStruct :: Int -> Integer -> Bool
 prop_rankTreeStruct n m =

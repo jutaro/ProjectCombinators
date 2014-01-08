@@ -13,8 +13,7 @@
 
 module Combinators.CombLambda where
 
--- import Combinators.BinaryTree
-import Combinators.Reduction
+
 import Combinators.Lambda
 import Combinators.Combinator
 import Combinators.Variable
@@ -37,7 +36,7 @@ reductToLambda vars term = foldr (\v t -> LAbst v Untyped :@: t) (combToLambda''
                                 show (combName c)
 
 combToLambda :: CTerm basis -> LTerm VarString Untyped
-combToLambda = reduceIt instrumentedContext NormalForm . combToLambda
+combToLambda = combToLambda'
 
 class Basis b => BracketAbstract b where
     bracketAbstract :: LTerm VarString t -> CTerm b
