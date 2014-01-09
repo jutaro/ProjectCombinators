@@ -25,13 +25,15 @@ import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Control.Monad (liftM2, liftM)
 import Test.HUnit ((@=?), Assertion)
 import Test.Framework.Providers.HUnit (testCase)
+import Debug.Trace (trace)
 
 
 -- ** Testing
 
 
 testLambda :: [Test]
-testLambda = [testProperty "prop_printParse" prop_printParse
+testLambda = [testCase "testReduction0" testReduction0
+             , testProperty "prop_printParse" prop_printParse
              , testProperty "prop_lambdaB" prop_lambdaB
              , testProperty "prop_testReduction" prop_testReduction
              , testCase "testReduction1" testReduction1
@@ -80,9 +82,24 @@ prop_lambdaB term = --trace ("\n\n" ++ ppl term ++ "\n" ++ ppl (parseLambda (ppl
                             term == fromLambdaB (toLambdaB term)
 
 prop_testReduction :: LTerm VarString Untyped -> Bool
-prop_testReduction term = (case reduceS term of
-                            Nothing -> Nothing
-                            Just t -> Just (toLambdaB t))  == reduceS (toLambdaB term)
+prop_testReduction term = if (case reduceS term of
+                                Nothing -> Nothing
+                                Just t -> Just (toLambdaB t))  == reduceS (toLambdaB term)
+                            then True
+                            else trace ("\n\nterm: " ++ pps term ++ "\nB-Red:"
+                                    ++ pps (reduceS (toLambdaB term))
+                                    ++ "\n\nS-Red:" ++ pps (reduceS term)) $ False
+
+
+testReduction0 :: Assertion
+testReduction0 =
+    let termString = "(\\w.(\\x.(\\y.x) (\\y.u)) (\\x y.(\\z u1 v1.z) x x) (w v) v)"
+        tst = (pparse :: String -> LTerm VarString Untyped) termString
+        tb  = (pparse :: String -> LTerm VarInt Untyped) termString
+    in (case reduceS tst of
+        Nothing -> Nothing
+        Just t -> Just (toLambdaB t)) @=? reduceS tb
+
 testReduction1 :: Assertion
 testReduction1 =
     (pparse :: String -> LTerm VarString Untyped) "y y y" @=? (reduceIt instrumentedContext NormalForm . pparse) "(\\x.x x) y y"

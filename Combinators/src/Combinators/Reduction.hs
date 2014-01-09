@@ -46,6 +46,7 @@ import Control.Monad (liftM)
 import Control.Monad.Trans.State
 -- import Debug.Trace (trace)
 import qualified Data.Set as Set (member, insert, empty, Set)
+import Debug.Trace (trace)
 
 -----------------------------------------------------------------------------
 -- ** Abstract Reduction, Reduction strategies and reduction contexts
@@ -141,8 +142,8 @@ maxcount = 1000
 
 instance (PP t, BinaryTree t, Ord t) => ReductionContext (InstrumentedContext t) t  where
     runContext tracing =
-        let (a, (_s,_i,_l)) = runState tracing (id,0,Set.empty)
-        in  {-trace (take 3000 (s ""))-} a
+        let (a, (s,_i,_l)) = runState tracing (id,0,Set.empty)
+        in  trace (take 3000 (s "")) a
     startReduction tz = do
         let t = unzipper tz
         modify (\(log,count,l) -> (log . showString "\nstart: " . ppsh t, count,Set.insert t l))
@@ -178,6 +179,8 @@ type InstrumentedContext t = State (ShowS,Int,Set.Set t)
 
 instrumentedContext :: InstrumentedContext t (Maybe t)
 instrumentedContext = state (\ s -> (Nothing,s))
+
+
 
 -----------------------------------------------------------------------------
 -- ** Term, and abstract Reduction with convenience functions
