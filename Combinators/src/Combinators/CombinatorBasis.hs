@@ -72,11 +72,23 @@ instance Basis IKS where
     primCombs = [iIKS,kIKS,sIKS]
 
 instance BracketAbstract IKS where
+    bracketAbstract ((LAbst v1 _ty) :@: ((LAbst v2 ty2) :@: r)) =
+        bracketAbstract' v1  (bracketAbstract ((LAbst v2 ty2) :@: r))
     bracketAbstract (LVar v) = Var v
-    bracketAbstract ((LAbst v1 _) :@: r) | LVar v1 == r = Const iIKS
+    bracketAbstract ((LAbst v1 _) :@: LVar r) | v1 == r = Const iIKS
     bracketAbstract ((LAbst v1 _) :@: r) | not (occurs v1 r) = Const kIKS :@ bracketAbstract r
     bracketAbstract ((LAbst v1 ty) :@: (l :@: r))   = Const sIKS :@  bracketAbstract ((LAbst v1 ty) :@: l)
                                                     :@ bracketAbstract ((LAbst v1 ty) :@: r)
     bracketAbstract (l :@: r) = bracketAbstract l :@ bracketAbstract r
     bracketAbstract (LAbst v _) = error $ "CombLambda>>bracketAbstract: Lonely Abstraction " ++ show v
+
+    bracketAbstract' v (Var n) | v == n     = Const iIKS
+                               | otherwise = Const kIKS :@ Var n
+    bracketAbstract' _v (Const c)          = Const kIKS :@ Const c
+    bracketAbstract' v r | not (occursC v r) = Const kIKS :@ r
+    bracketAbstract' v (l :@ r)            = Const sIKS :@ bracketAbstract' v l :@ bracketAbstract' v r
+
+
+
+
 

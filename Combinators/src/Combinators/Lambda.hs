@@ -70,6 +70,9 @@ import Debug.Trace (trace)
 -- We choose to parametrize on the type of variables, which is a something of class Variable.
 -- This makes it possible to use either strings, or de bruijn indices
 --
+-- As well we really represent here a family of terms, as we form untyped,
+-- or different typed terms via the t type variable.
+--
 -- Abstractions are used together with a pseudo application, to make a term a natural instance
 -- of a binary tree, with the burden always to handle the error case of a lonely abstration
 
@@ -78,9 +81,10 @@ data LTerm v t where
       LAbst :: Typed t => VarString -> t -> LTerm v t
       (:@:) :: Variable v => LTerm v t -> LTerm v t -> LTerm v t
 
--- deriving instance Show t => Show (LTerm v t)
-instance PP (LTerm v t) => Show (LTerm v t) where
-    show =  pps
+deriving instance Show t => Show (LTerm v t)
+
+--instance PP (LTerm v t) => Show (LTerm v t) where
+--    show =  pps
 
 -- | Names of local variables (abst) are not important for equality
 instance Eq t => Eq (LTerm VarInt t) where
@@ -272,15 +276,11 @@ subsititueAlpha  var replace replaceIn =
     let freeVars'    = nub $ freeVars replace
         boundVars'   = nub $ boundVars replaceIn
         renamingVars = List.nub $ List.intersect freeVars' boundVars'
-        newVarNames  = trace ("renaming1: " ++ show renamingVars) $
-                            foldr (findNewName 0) [] renamingVars
-        replacePairs = trace ("renaming2: " ++ show newVarNames) $
-                            zip renamingVars newVarNames
+        newVarNames  = foldr (findNewName 0) [] renamingVars
+        replacePairs = zip renamingVars newVarNames
         replaceIn'   = foldr (renameBoundVar False) replaceIn replacePairs
         res          = substitutel var replace replaceIn'
-    in --trace ("replace': " ++ show replace' ++ "replaceIn': " ++ show replaceIn'
-       --         ++ "res: " ++ show res) $
-       res
+    in res
   where
     findNewName :: Int -> VarString -> [VarString] -> [VarString]
     findNewName ind var accu =

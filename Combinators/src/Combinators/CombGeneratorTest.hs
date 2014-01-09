@@ -23,7 +23,6 @@ import Test.Framework (Test)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck
 import Control.Monad (liftM2, liftM)
-import Debug.Trace (trace)
 
 instance Arbitrary (CTerm KS) where
     arbitrary = frequency
@@ -58,14 +57,14 @@ prop_CombGen n =  if n >= 1 && n < 10
 
 prop_RankGen :: CTerm KS -> Bool
 prop_RankGen t =  let ind = rankComb t
-                  in trace ("prop_RankGen t: " ++ show t ++ " index: " ++ show ind) $
+                  in -- trace ("prop_RankGen t: " ++ show t ++ " index: " ++ show ind) $
                     if ind > 10000
                             then True
                             else head (take 1 (drop (fromIntegral (ind-1)) genCombs)) == t
 
 prop_RankUnrank :: CTerm KS -> Bool
 prop_RankUnrank t = let ind = rankComb t
-                    in trace ("prop_RankUnrank t: " ++ show t ++ " index: " ++ show ind) $
+                    in -- trace ("prop_RankUnrank t: " ++ show t ++ " index: " ++ show ind) $
                         if ind > 1000000
                             then True
                             else unrankComb ind == t

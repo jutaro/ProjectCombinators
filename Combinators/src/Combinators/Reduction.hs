@@ -44,9 +44,10 @@ import Combinators.BinaryTree
 import Data.Functor.Identity
 import Control.Monad (liftM)
 import Control.Monad.Trans.State
--- import Debug.Trace (trace)
 import qualified Data.Set as Set (member, insert, empty, Set)
-import Debug.Trace (trace)
+
+trace :: a -> b -> b
+trace _x s = s
 
 -----------------------------------------------------------------------------
 -- ** Abstract Reduction, Reduction strategies and reduction contexts

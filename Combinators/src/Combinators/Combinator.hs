@@ -26,6 +26,7 @@ module Combinators.Combinator (
 -- ** Subterms
     subterm,
     allSubterms,
+    occursC,
 -----------------------------------------------------------------------------
 -- ** Substitution
     substitute,
@@ -100,7 +101,7 @@ infixl 5 :@
 
 -- | A 'Basis' defines the primitive combinators.
 --
--- We might add here bracket abstraction?
+
 class Basis basis where
     primCombs :: [Combinator basis]
 
@@ -241,6 +242,12 @@ allSubterms :: Basis basis => CTerm basis -> [CTerm basis]
 allSubterms (Var a1) = [Var a1]
 allSubterms (Const a1) = [Const a1]
 allSubterms (a1 :@ a2) = (a1 :@ a2) : nub (allSubterms a1 ++ allSubterms a2)
+
+-- | Does variable v occurst in the term?
+occursC :: VarString -> CTerm basis -> Bool
+occursC v (Var n)                      = v == n
+occursC v (l :@ r)                     = occursC v l || occursC v r
+occursC _v (Const _)                   = False
 
 -----------------------------------------------------------------------------
 -- ** Substitution

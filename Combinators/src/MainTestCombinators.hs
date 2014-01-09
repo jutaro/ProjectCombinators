@@ -22,15 +22,17 @@ import Combinators.CombinatorBasisTest
 import Combinators.PropertiesTest
 import Combinators.CombGeneratorTest
 import Combinators.TypesTest
+import Combinators.CombLambdaTest (testCombLambda)
 
 import Test.Framework
 
 
 main :: IO ()
 main = defaultMain $
-            -- testCombinators
-            [] ++ testLambda
+            testCombinators
+            ++ testLambda
             ++ testTypes
+            ++ testCombLambda
 
 testCombinators :: [Test]
 testCombinators = testLanguage
