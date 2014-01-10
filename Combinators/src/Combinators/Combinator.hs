@@ -20,8 +20,8 @@ module Combinators.Combinator (
 -----------------------------------------------------------------------------
 -- ** Basis KS
     KS,
-    kKS,
-    sKS,
+    k,
+    s,
 -----------------------------------------------------------------------------
 -- ** Subterms
     subterm,
@@ -139,27 +139,26 @@ primArity = length . combVars
 -----------------------------------------------------------------------------
 -- ** Basis
 
--- ** IKS
+-- ** KS
 
 -- | A combinatory Basis is represented purely as a type.
 -- It has no data constructors, so can never be instantiated.
 --
--- This is the Basis with combinators I, K, S
+-- This is the Basis with combinators K, S
 --
 
 data KS
-
--- | Definition of the combinators for the IKS Basis
-kKS, sKS :: Combinator KS
-kKS = Combinator "K" ["_u", "_v"] (Var ("_u"))
+k,s :: Basis b => Combinator b
+k = Combinator "K" ["u#", "v#"] (Var ("u#"))
             (SAtom "a" :->: SAtom "b" :->: SAtom "a")
-sKS = Combinator "S" ["_u", "_v", "_w"]
-            (Var ("_u") :@ Var ("_w") :@
-            (Var ("_v") :@ Var ("_w")))
+s = Combinator "S" ["u#", "v#", "w#"]
+            (Var ("u#") :@ Var ("w#") :@
+            (Var ("v#") :@ Var ("w#")))
             ((SAtom "a" :->: SAtom "b" :->: SAtom "c") :->: (SAtom "a" :->: SAtom "b") :->: SAtom "a" :->: SAtom "c")
 
+-- | Definition of the combinators for the IKS Basis
 instance Basis KS where
-    primCombs = [kKS,sKS]
+    primCombs = [k,s]
 
 
 -----------------------------------------------------------------------------

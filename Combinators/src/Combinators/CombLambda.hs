@@ -22,9 +22,9 @@ import Combinators.Variable
 -- * Comb Lambda - back and forth between combinatory logic and lamnbda calculus
 -----------------------------------------------------------------------------
 
--- Converts a term of combinatory logic into an untyped lambda term
+-- | Converts a term of combinatory logic into an untyped lambda term
 combToLambda :: CTerm basis -> LTerm VarString Untyped
-combToLambda = combToLambda'
+combToLambda = canonicalizeLambda . combToLambda'
 
 combToLambda' :: CTerm basis -> LTerm VarString Untyped
 combToLambda' (Var v) = LVar v
@@ -40,28 +40,39 @@ reductToLambda vars term = foldr (\v t -> LAbst v Untyped :@: t) (combToLambda''
                                 show (combName c)
 
 
-
+-- | This is a class that serves to convert a term of combinatory logic to a lambda term.
 class Basis b => BracketAbstract b where
     bracketAbstract :: LTerm VarString t -> CTerm b
+    -- ^ Implement / Call this to convert a combinatory term to a lambda term
     bracketAbstract' :: VarString -> CTerm b -> CTerm b
-
+    -- ^ Implement this as a helper for nested abstrations
 
 instance BracketAbstract KS where
-    bracketAbstract ((LAbst v1 _ty) :@: ((LAbst v2 ty2) :@: r)) =
-        bracketAbstract' v1  (bracketAbstract ((LAbst v2 ty2) :@: r))
+    -- nested abstractions are passed to the helper function
+    bracketAbstract ((LAbst v _ty) :@: ((LAbst v2 ty2) :@: r)) =
+        bracketAbstract' v  (bracketAbstract ((LAbst v2 ty2) :@: r))
     bracketAbstract (LVar v) = Var v
-    bracketAbstract ((LAbst v1 _) :@: LVar r) | v1 == r = Const sKS :@ Const kKS :@ Const kKS
-    bracketAbstract ((LAbst v1 _) :@: r) | not (occurs v1 r) = Const kKS :@ bracketAbstract r
-    bracketAbstract ((LAbst v1 ty) :@: (l :@: r))   = Const sKS :@  bracketAbstract ((LAbst v1 ty) :@: l)
-                                                    :@ bracketAbstract ((LAbst v1 ty) :@: r)
+    -- identity case
+    bracketAbstract ((LAbst v _) :@: LVar r) | v == r = Const s :@ Const k :@ Const k
+    -- eta shortcut
+    bracketAbstract (((LAbst v _ty) :@: l) :@: _r) | not (occurs v l) = bracketAbstract l
+    -- constant case
+    bracketAbstract ((LAbst v _) :@: r) | not (occurs v r) = Const k :@ bracketAbstract r
+    -- application case
+    bracketAbstract ((LAbst v ty) :@: (l :@: r))   = Const s :@  bracketAbstract ((LAbst v ty) :@: l)
+                                                    :@ bracketAbstract ((LAbst v ty) :@: r)
     bracketAbstract (l :@: r) = bracketAbstract l :@ bracketAbstract r
     bracketAbstract (LAbst v _) = error $ "CombLambda>>bracketAbstract: Lonely Abstraction " ++ show v
 
-    bracketAbstract' v (Var n) | v == n     = Const sKS :@ Const kKS :@ Const kKS
-                               | otherwise = Const kKS :@ Var n
-    bracketAbstract' _v (Const c)          = Const kKS :@ Const c
-    bracketAbstract' v r | not (occursC v r) = Const kKS :@ r
-    bracketAbstract' v (l :@ r)            = Const sKS :@ bracketAbstract' v l :@ bracketAbstract' v r
+    -- identity case
+    bracketAbstract' v (Var n) | v == n     = Const s :@ Const k :@ Const k
+    -- constant case
+                               | otherwise = Const k :@ Var n
+    bracketAbstract' _v (Const c)          = Const k :@ Const c
+    bracketAbstract' v r | not (occursC v r) = Const k :@ r
+    -- application case
+    bracketAbstract' v (l :@ r)            = Const s :@ bracketAbstract' v l :@ bracketAbstract' v r
+
 
 
 

@@ -66,7 +66,7 @@ testLambda = [testCase "testReduction0" testReduction0
 instance Arbitrary (LTerm VarString Untyped) where
     arbitrary = frequency
         [(8,liftM LVar (elements ["u","v","w","x","y","z"]))
-        ,(6,liftM2 (:@:) arbitrary arbitrary)
+        ,(7,liftM2 (:@:) arbitrary arbitrary)
         ,(8,liftM2 ((:@:) . flip LAbst Untyped) (elements ["u","v","w","x","y","z"]) arbitrary)
         ]
 

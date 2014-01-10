@@ -31,6 +31,11 @@ import Data.Maybe (fromJust)
 parseIKS :: String -> CTerm IKS
 parseIKS = pparse
 
+sIKS, kIKS, iIKS :: Combinator IKS
+sIKS = s
+iIKS = i
+kIKS = k
+
 --  For any term: print and parse give the original term
 prop_spineLength :: CTerm IKS -> Bool
 prop_spineLength term = length (spine term) == spineLength term

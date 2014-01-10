@@ -52,7 +52,7 @@ import Data.Maybe (fromJust)
 import qualified Data.List as List
        (lookup, elemIndex, elem, intersect, nub)
 import Control.Monad (liftM)
-import Debug.Trace (trace)
+--import Debug.Trace (trace)
 
 -----------------------------------------------------------------------------
 -- * Lambda calculus implementation

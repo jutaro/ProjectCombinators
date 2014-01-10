@@ -25,13 +25,13 @@ import Combinators.BinaryTree (PP(..))
 
 
 testWK :: Assertion
-testWK  = (pparse :: String -> CTerm IBCWK) "x" @=? (normalOrderReduction . pparse) "W K x"
+testWK  = (pparse :: String -> CTerm IKBCW) "x" @=? (normalOrderReduction . pparse) "W K x"
 
 testS :: Assertion
-testS  = (pparse :: String -> CTerm IBCWK) "x z (y z)" @=? (normalOrderReduction . pparse) "B (B (B W) C) (B B) x y z"
+testS  = (pparse :: String -> CTerm IKBCW) "x z (y z)" @=? (normalOrderReduction . pparse) "B (B (B W) C) (B B) x y z"
 
 testS2 :: Assertion
-testS2  = (pparse :: String -> CTerm IBCWK) "x z (y z)" @=? (normalOrderReduction . pparse) "B (B W) (B B C) x y z"
+testS2  = (pparse :: String -> CTerm IKBCW) "x z (y z)" @=? (normalOrderReduction . pparse) "B (B W) (B B C) x y z"
 
 
 testBasis :: [Test]

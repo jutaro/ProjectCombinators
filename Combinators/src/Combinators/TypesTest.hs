@@ -20,7 +20,7 @@ import Combinators.Types (SType(..))
 import Combinators.BinaryTree (PP(..))
 
 import Test.QuickCheck
-       (frequency, elements, oneof, sized, Arbitrary)
+       (frequency, elements, Arbitrary)
 import Control.Monad (liftM2, liftM)
 import Test.Framework (Test)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
