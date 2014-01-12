@@ -50,7 +50,7 @@ instance BracketAbstract IKS where
     -- constant case
                                | otherwise = Const k :@ Var n
     bracketAbstract' _v (Const c)          = Const k :@ Const c
-    bracketAbstract' v r | not (occursC v r) = Const k :@ r
+    bracketAbstract' v r | not (occurs v r) = Const k :@ r
     -- application case
     bracketAbstract' v (l :@ r)            = Const s :@ bracketAbstract' v l :@ bracketAbstract' v r
 
@@ -111,10 +111,10 @@ instance BracketAbstract IKBCW where
     -- constant case
                                | otherwise = Const k :@ Var n
     bracketAbstract' _v (Const c)          = Const k :@ Const c
-    bracketAbstract' v r | not (occursC v r) = Const k :@ r
+    bracketAbstract' v r | not (occurs v r) = Const k :@ r
     -- application case
-    bracketAbstract' v (l :@ r) | not (occursC v l) = Const b :@ l :@ bracketAbstract' v r
-                                | not (occursC v r) = Const c :@ bracketAbstract' v l :@ r
+    bracketAbstract' v (l :@ r) | not (occurs v l) = Const b :@ l :@ bracketAbstract' v r
+                                | not (occurs v r) = Const c :@ bracketAbstract' v l :@ r
                                 | otherwise       = Const w :@ ((Const b :@ (Const c
                                                                 :@ bracketAbstract' v l))
                                                                 :@ bracketAbstract' v r)

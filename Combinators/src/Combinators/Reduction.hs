@@ -31,6 +31,7 @@ module Combinators.Reduction (
 -----------------------------------------------------------------------------
 -- ** Term, and abstract Reduction with convenience functions
     Term(..),
+    TermString(..),
     Reduction (..),
     reduceCont,
     reduce,
@@ -45,6 +46,7 @@ import Data.Functor.Identity
 import Control.Monad (liftM)
 import Control.Monad.Trans.State
 import qualified Data.Set as Set (member, insert, empty, Set)
+import Combinators.Variable (VarString)
 
 trace :: a -> b -> b
 trace _x s = s
@@ -190,6 +192,12 @@ instrumentedContext = state (\ s -> (Nothing,s))
 class BinaryTree t => Term t where
     isTerminal :: t -> Bool
     -- ^ This information is used for reduction
+
+class BinaryTree t => TermString t where
+    occurs :: VarString -> t -> Bool
+    -- ^ Does variable v occurst in the term?
+    freeVars :: t -> [VarString]
+    -- | Returns a list of free Vars in the term
 
 -- | A term is a binary tree, which can be reduced one or many times.
 class (ReductionContext c t, BinaryTree t , PP t, Strategy s) => Reduction t s c where

@@ -69,7 +69,7 @@ instance BracketAbstract KS where
     -- constant case
                                | otherwise = Const k :@ Var n
     bracketAbstract' _v (Const c)          = Const k :@ Const c
-    bracketAbstract' v r | not (occursC v r) = Const k :@ r
+    bracketAbstract' v r | not (occurs v r) = Const k :@ r
     -- application case
     bracketAbstract' v (l :@ r)            = Const s :@ bracketAbstract' v l :@ bracketAbstract' v r
 

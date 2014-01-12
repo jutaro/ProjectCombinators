@@ -11,7 +11,7 @@
 -----------------------------------------------------------------------------
 
 {-# LANGUAGE FlexibleInstances, GADTs, StandaloneDeriving, FlexibleContexts, MultiParamTypeClasses,
-      ScopedTypeVariables, UndecidableInstances #-}
+      ScopedTypeVariables #-}
 
 
 module Combinators.Lambda (
@@ -119,6 +119,19 @@ instance Variable v => Term (LTerm v t) where
     isTerminal (LAbst _ _ :@: _r) = True
     isTerminal _                = False
 
+instance TermString (LTerm VarString t) where
+    occurs v (LVar n)                      = v == n
+    occurs v (LAbst n _ :@: t) | v == n     = False
+                             | otherwise   = occurs v t
+    occurs v (l :@: r)                     = occurs v l || occurs v r
+    occurs _v (LAbst n _)                  = error $ "CombLambda>>bracketAbstract: Lonely Abstraction " ++ show n
+
+    freeVars (LVar n)          = [n]
+    freeVars (LAbst n _ :@: t) = delete n (nub (freeVars t))
+    freeVars (l :@: r)         = freeVars l ++ freeVars r
+    freeVars (LAbst n _)       = error $ "CombLambda>>freeVars: Lonely Abstraction " ++ show n
+
+
 -----------------------------------------------------------------------------
 -- ** Priniting and parsing
 
@@ -189,20 +202,6 @@ parsePart = do
 -----------------------------------------------------------------------------
 -- ** Properties
 
--- | Does variable v occurst in the term?
-occurs :: VarString -> LTerm VarString t -> Bool
-occurs v (LVar n)                      = v == n
-occurs v (LAbst n _ :@: t) | v == n     = False
-                         | otherwise   = occurs v t
-occurs v (l :@: r)                     = occurs v l || occurs v r
-occurs _v (LAbst n _)                  = error $ "CombLambda>>bracketAbstract: Lonely Abstraction " ++ show n
-
--- | Returns a list of free Vars in the term
-freeVars :: LTerm VarString t -> [VarString]
-freeVars (LVar n)          = [n]
-freeVars (LAbst n _ :@: t) = delete n (nub (freeVars t))
-freeVars (l :@: r)         = freeVars l ++ freeVars r
-freeVars (LAbst n _)       = error $ "CombLambda>>freeVars: Lonely Abstraction " ++ show n
 
 -- | Returns a list of bound Vars in the term
 boundVars :: LTerm VarString t -> [VarString]
@@ -219,13 +218,14 @@ isClosed = null . freeVars
 canonicalizeLambda :: LTerm VarString t -> LTerm VarString t
 canonicalizeLambda t =
     let fvs = freeVars t
-        env = zip fvs [0..]
+        env = zip fvs (map negate [0..])
     in (\(_,_,r) -> r) $ canonicalizeLambda' (length fvs) env t
 
 canonicalizeLambda' :: Int -> [(String,Int)] -> LTerm VarString t -> (Int, [(String,Int)], LTerm VarString t)
 canonicalizeLambda' i env (LVar s) =
     case lookup s env of
-        Just ind ->  (i,env,LVar (nameGen !! ind))
+        Just ind | ind > 0   ->  (i,env,LVar (nameGen !! ind))
+                 | otherwise ->  (i,env,LVar (nameGenFV !! negate ind))
         Nothing -> error ("Lambda>>canonicalizeLambda: Not closed, found: " ++ s)
 canonicalizeLambda' i env (LAbst s t :@: r) =
     let (_i',_env',r') = canonicalizeLambda' (i+1) ((s,i):env) r

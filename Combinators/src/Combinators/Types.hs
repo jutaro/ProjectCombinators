@@ -27,6 +27,7 @@ module Combinators.Types (
     TypeContext,
     Substitutor,
     substituteType,
+    unifyTypes,
     substituteEnv,
     typeVars,
     parseType
@@ -39,7 +40,6 @@ import Text.Parsec.String (Parser)
 import Combinators.Variable (varParse, VarString)
 import Text.PrettyPrint
        (($$), (<+>), braces, empty, Doc, text, (<>), parens, brackets)
-import Combinators.Reduction (Term)
 import Data.Maybe (isJust)
 
 -----------------------------------------------------------------------------
@@ -91,7 +91,7 @@ instance Typed STyped where
 -- * Type inference
 
 -- | A class that describe a possible Typeable Term
-class Term t =>  Typeable t where
+class Typeable t where
     typeof :: TypeContext VarString -> t -> Maybe (SType, TypeContext VarString)
     -- ^ Infers just the simple type and environment of a Term or returns Nothing,
     -- if the term is not typeable.
@@ -215,7 +215,7 @@ parseEnvEntry = do
     return (l,r)
 
 -----------------------------------------------------------------------------
--- ** Type substitution
+-- ** Type substitution and unification
 
 -- | A substituor binds the type that should be substituted to a type
 type Substitutor = [(TypeAtom,SType)]
@@ -236,3 +236,17 @@ typeVars :: SType -> [TypeAtom]
 typeVars (SAtom n)       = [n]
 typeVars (l :->: r)       = typeVars l ++ typeVars r
 
+-- | Unify two types and returns just a substitution if possible,
+-- and Nothing if it is not possible
+unifyTypes :: SType -> SType -> Maybe Substitutor
+unifyTypes t1 t2 | t1 == t2                        = Just []
+unifyTypes (SAtom s) b | not (elem s (typeVars b)) = Just [(s,b)]
+                  | otherwise                 = Nothing
+unifyTypes (l :->: r) (SAtom s)                     = unifyTypes (SAtom s) (l :->: r)
+unifyTypes (l1 :->: r1) (l2 :->: r2)                 = case unifyTypes r1 r2 of
+                                                Nothing -> Nothing
+                                                Just substr ->
+                                                    case unifyTypes (substituteType substr l1)
+                                                               (substituteType substr l2) of
+                                                        Nothing -> Nothing
+                                                        Just substl -> Just (substl ++ substr)

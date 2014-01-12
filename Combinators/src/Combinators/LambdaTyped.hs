@@ -198,25 +198,12 @@ reconstructType (index,env) (l :@: r) =
             case reconstructType (index',env') l of
                 Nothing                 -> Nothing
                 Just (index'',env'',tl,ntl) ->
-                    case unify tl (tr :->: newType)  of
+                    case unifyTypes tl (tr :->: newType)  of
                         Nothing -> Nothing
                         Just subst ->
                             let newEnv = substituteEnv subst env''
                             in Just (index'',newEnv,newType,ntl :@: ntr)
 reconstructType _ (LAbst _ _) = error "LambdaTyped>>inferSType: Lonely LAbst"
 
--- | Unify two types and returns just a substitution if possible,
--- and Nothing if it is not possible
-unify :: SType -> SType -> Maybe Substitutor
-unify t1 t2 | t1 == t2                        = Just []
-unify (SAtom s) b | not (elem s (typeVars b)) = Just [(s,b)]
-                  | otherwise                 = Nothing
-unify (l :->: r) (SAtom s)                     = unify (SAtom s) (l :->: r)
-unify (l1 :->: r1) (l2 :->: r2)                 = case unify r1 r2 of
-                                                Nothing -> Nothing
-                                                Just substr ->
-                                                    case unify (substituteType substr l1)
-                                                               (substituteType substr l2) of
-                                                        Nothing -> Nothing
-                                                        Just substl -> Just (substl ++ substr)
+
 

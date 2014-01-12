@@ -26,7 +26,6 @@ module Combinators.Combinator (
 -- ** Subterms
     subterm,
     allSubterms,
-    occursC,
 -----------------------------------------------------------------------------
 -- ** Substitution
     substitute,
@@ -94,6 +93,15 @@ instance Basis basis => Term (CTerm basis) where
     isTerminal (Var _)          = True
     isTerminal (Const _)        = True
     isTerminal _                = False
+
+instance Basis basis => TermString (CTerm basis) where
+    occurs v (Var n)                      = v == n
+    occurs v (l :@ r)                     = occurs v l || occurs v r
+    occurs _v (Const _)                   = False
+
+    freeVars (Var n)          = [n]
+    freeVars (l :@ r)         = freeVars l ++ freeVars r
+    freeVars (Const _)        = []
 
 -- Bind application to the left.
 infixl 5 :@
@@ -241,12 +249,6 @@ allSubterms :: Basis basis => CTerm basis -> [CTerm basis]
 allSubterms (Var a1) = [Var a1]
 allSubterms (Const a1) = [Const a1]
 allSubterms (a1 :@ a2) = (a1 :@ a2) : nub (allSubterms a1 ++ allSubterms a2)
-
--- | Does variable v occurst in the term?
-occursC :: VarString -> CTerm basis -> Bool
-occursC v (Var n)                      = v == n
-occursC v (l :@ r)                     = occursC v l || occursC v r
-occursC _v (Const _)                   = False
 
 -----------------------------------------------------------------------------
 -- ** Substitution

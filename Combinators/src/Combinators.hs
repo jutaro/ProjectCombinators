@@ -25,6 +25,7 @@ module Combinators (
     ,module Combinators.Types
     ,module Combinators.LambdaTyped
     ,module Combinators.Queries
+
 )
 
 where
@@ -40,6 +41,7 @@ import Combinators.CombLambda
 import Combinators.CombGenerator
 import Combinators.Types
 import Combinators.LambdaTyped
+import Combinators.CombinatorTyped ()
 import Combinators.Queries
 
 
