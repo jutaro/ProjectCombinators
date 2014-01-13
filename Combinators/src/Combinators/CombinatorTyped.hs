@@ -20,11 +20,13 @@ module Combinators.CombinatorTyped (
 ) where
 
 import Combinators.Types
-       (TypeContext, SType, Typeable(..), typeVarGen, SType(..), Typeable)
+       (substituteType, substituteContext, unifyTypes, TypeContext,
+        Typeable(..), typeVarGen, SType(..),)
 import Combinators.Combinator
        (Combinator(..), CTerm(..), CTerm, Basis)
 import Combinators.Variable (VarString)
 import Combinators.Reduction (TermString(..))
+import Combinators.BinaryTree (PP(..))
 
 -----------------------------------------------------------------------------
 -- ** Combinators
@@ -38,7 +40,7 @@ instance Basis b => Typeable (CTerm b) where
         let fv = zip (freeVars term) (map (\i -> SAtom (typeVarGen !! i))  [0..])
         in typeof fv term
 
-    typeofC term | not (null (freeVars term)) = error ""
+    typeofC term | not (null (freeVars term)) = error ("CombinatorTyped>>typeOfC: Term not closed: " ++ pps term)
                  | otherwise                = case typeof [] term of
                                                 Nothing -> Nothing
                                                 Just p -> Just (fst p)
@@ -52,13 +54,17 @@ primTypeOf context ind (Var s)   = case lookup s context of
                                                   in Just (newType,(s,newType):context,ind + 1)
                                         Just nt -> Just (nt,context,ind)
 primTypeOf context ind (l :@ r)  = do
-                                    (l',cont',ind') <- primTypeOf context ind l
-                                    (r',cont'',ind'') <- primTypeOf cont' ind' r
-                                    return (l' :->: r',cont'',ind'')
+                                    let newType = SAtom $ typeVarGen !! ind
+                                    (r',cont',ind') <- primTypeOf context (ind+1) r
+                                    (l',cont'',ind'') <- primTypeOf cont' ind' l
+                                    subst <- unifyTypes l' (r' :->: newType)
+                                    let newCont = substituteContext subst cont''
+                                        newType' = substituteType subst newType
+                                    return (newType',newCont,ind'')
 
 primitiveType :: Int -> Combinator c -> (Int,SType)
 primitiveType ind comb = let ((ind',_),t) = replaceVars (ind,[]) (combType comb)
-                    in (ind',t)
+                         in (ind',t)
   where
     replaceVars (ind,binds) (SAtom s) =
         case lookup s binds of
@@ -68,5 +74,4 @@ primitiveType ind comb = let ((ind',_),t) = replaceVars (ind,[]) (combType comb)
         let ((ind',binds'),l') = replaceVars (ind,binds) l
             ((ind'',binds''),r') = replaceVars (ind',binds') r
         in ((ind'',binds''), l' :->: r')
-
 

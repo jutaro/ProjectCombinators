@@ -1,4 +1,3 @@
-{-# LANGUAGE EmptyDataDecls, FlexibleInstances, MultiParamTypeClasses #-}
 -----------------------------------------------------------------------------
 --
 -- Module      :  Combinators.Basis
@@ -6,6 +5,8 @@
 -- License     :  AllRightsReserved
 --
 -----------------------------------------------------------------------------
+
+{-# LANGUAGE EmptyDataDecls, FlexibleInstances, MultiParamTypeClasses #-}
 
 module Combinators.CombinatorBasis where
 
@@ -19,7 +20,7 @@ import Combinators.Types (SType(..))
 -----------------------------------------------------------------------------
 -- ** IKS
 
-data IKS
+data IKS = IKS
 
 i :: Basis b => Combinator b
 i = Combinator "I" ["u#"] (Var ("u#"))
@@ -60,8 +61,7 @@ instance BracketAbstract IKS where
 -- ** IKSBCW
 
 -- | Definition of the combinators for the IKSBCW Basis
-data IKBCW
-
+data IKBCW = IKBCW
 b,c,w :: Basis b => Combinator b
 
 b = Combinator "B" ["u#","v#","w#"]

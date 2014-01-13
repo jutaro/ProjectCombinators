@@ -19,7 +19,7 @@ module Combinators.Combinator (
     primArity,
 -----------------------------------------------------------------------------
 -- ** Basis KS
-    KS,
+    KS(..),
     k,
     s,
 -----------------------------------------------------------------------------
@@ -155,7 +155,7 @@ primArity = length . combVars
 -- This is the Basis with combinators K, S
 --
 
-data KS
+data KS = KS
 k,s :: Basis b => Combinator b
 k = Combinator "K" ["u#", "v#"] (Var ("u#"))
             (SAtom "a" :->: SAtom "b" :->: SAtom "a")

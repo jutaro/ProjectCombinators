@@ -18,17 +18,16 @@ module Combinators.Types (
     SType(..),
     TypeAtom,
     Typeable(..),
-    Typed(..),
+    Typed,
     Untyped(..),
-    STyped(..),
     typeVarGen,
     canonicalizeType,
     canonicalizeTypeContext,
     TypeContext,
     Substitutor,
     substituteType,
+    substituteContext,
     unifyTypes,
-    substituteEnv,
     typeVars,
     parseType
 ) where
@@ -71,21 +70,15 @@ instance BinaryTree SType where
 -- | A class that has instances for untyped, simple types and maybe other types.
 --   This can be used to uniformly represent terms of different kinds
 class Eq t => Typed t where
-     typed :: t -> Maybe SType
 
 -- | A type that represents an untyped behavior
 data Untyped = Untyped
     deriving (Eq,Ord,Show)
 
 instance Typed Untyped where
-    typed _ = Nothing
 
 -- | A type that represents a behavior with simple types
-data STyped = STyped SType
-    deriving (Eq,Ord,Show)
-
-instance Typed STyped where
-    typed (STyped t) = Just t
+instance Typed SType where
 
 -----------------------------------------------------------------------------
 -- * Type inference
@@ -228,8 +221,8 @@ substituteType subst (SAtom a) = case lookup a subst of
 substituteType subst (l :->: r) = substituteType subst l :->: substituteType subst r
 
 -- | Apply a substitutor to an environment
-substituteEnv :: Substitutor -> TypeContext v -> TypeContext v
-substituteEnv subst env = map (\(n,t) -> (n,substituteType subst t)) env
+substituteContext :: Substitutor -> TypeContext v -> TypeContext v
+substituteContext subst env = map (\(n,t) -> (n,substituteType subst t)) env
 
 -- | List all type atoms of a type
 typeVars :: SType -> [TypeAtom]
@@ -239,14 +232,15 @@ typeVars (l :->: r)       = typeVars l ++ typeVars r
 -- | Unify two types and returns just a substitution if possible,
 -- and Nothing if it is not possible
 unifyTypes :: SType -> SType -> Maybe Substitutor
-unifyTypes t1 t2 | t1 == t2                        = Just []
+unifyTypes t1 t2       | t1 == t2                  = Just []
 unifyTypes (SAtom s) b | not (elem s (typeVars b)) = Just [(s,b)]
-                  | otherwise                 = Nothing
-unifyTypes (l :->: r) (SAtom s)                     = unifyTypes (SAtom s) (l :->: r)
-unifyTypes (l1 :->: r1) (l2 :->: r2)                 = case unifyTypes r1 r2 of
-                                                Nothing -> Nothing
-                                                Just substr ->
-                                                    case unifyTypes (substituteType substr l1)
-                                                               (substituteType substr l2) of
-                                                        Nothing -> Nothing
-                                                        Just substl -> Just (substl ++ substr)
+                       | otherwise                 = Nothing
+unifyTypes (l :->: r) (SAtom s)                    = unifyTypes (SAtom s) (l :->: r)
+unifyTypes (l1 :->: r1) (l2 :->: r2)               =
+    case unifyTypes r1 r2 of
+        Nothing -> Nothing
+        Just substr ->
+            case unifyTypes (substituteType substr l1)
+                       (substituteType substr l2) of
+                Nothing -> Nothing
+                Just substl -> Just (substl ++ substr)

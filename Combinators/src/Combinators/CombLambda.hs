@@ -27,12 +27,12 @@ combToLambda :: CTerm basis -> LTerm VarString Untyped
 combToLambda = canonicalizeLambda . combToLambda'
 
 combToLambda' :: CTerm basis -> LTerm VarString Untyped
-combToLambda' (Var v) = LVar v
-combToLambda' (l :@ r) = combToLambda' l :@: combToLambda' r
-combToLambda' (Const comb) =  reductToLambda (combVars comb) (combReduct comb)
+combToLambda' (Var v)      = LVar v
+combToLambda' (l :@ r)     = combToLambda' l :@: combToLambda' r
+combToLambda' (Const comb) = reductToLambda (combVars comb) (combReduct comb)
 
 reductToLambda :: [VarString] -> CTerm basis -> LTerm VarString Untyped
-reductToLambda vars term = foldr (\v t -> LAbst v Untyped :@: t) (combToLambda'' term) vars
+reductToLambda vars term  = foldr (\v t -> LAbst v Untyped :@: t) (combToLambda'' term) vars
   where
     combToLambda'' (Var v)    = LVar v
     combToLambda'' (l :@ r)   = combToLambda'' l :@: combToLambda'' r

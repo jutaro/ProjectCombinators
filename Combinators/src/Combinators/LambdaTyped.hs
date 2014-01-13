@@ -2,7 +2,7 @@
 --
 -- Module      :  Combinators.LambdaTyped
 -- Copyright   :  All rights reserved, Jürgen Nicklisch-Franken
--- License     :  GPL (Just (Version {versionBranch = [2], versionTags = []}))
+-- License     :  GPL 2
 --
 -- Maintainer  :  Jürgen Nicklisch-Franken
 -- Stability   :  provisional
@@ -16,7 +16,6 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Combinators.LambdaTyped (
-    STyped(..),
     typeLambda,
     untypeLambda
 ) where
@@ -36,17 +35,17 @@ import qualified Text.Parsec as PA
 -----------------------------------------------------------------------------
 -- ** Lambda terms with simple types
 
-instance PP (LTerm VarString STyped) where
+instance PP (LTerm VarString SType) where
     pp = ppSt' True True []
     pparser = parseTermSt Nothing
 
 -- | Pretty prints a lambda term with simple types.
-ppSt' :: Bool -> Bool -> [(VarString,SType)] -> LTerm VarString STyped -> PP.Doc
+ppSt' :: Bool -> Bool -> [(VarString,SType)] -> LTerm VarString SType -> PP.Doc
 ppSt' _ _ _ (LVar v)                          = PP.text (varPp v)
-ppSt' il rm l ((LAbst v (STyped ty1)) :@: ((LAbst v' ty2) :@: t'))
+ppSt' il rm l ((LAbst v ty1) :@: ((LAbst v' ty2) :@: t'))
                                               = ppSt' il rm ((v,ty1) : l) ((LAbst v' ty2) :@: t')
 ppSt' il False l ((LAbst v ty) :@: t)         = PP.parens $ ppSt' il True l ((LAbst v ty) :@: t)
-ppSt' _ True l ((LAbst v (STyped ty)) :@: t)  = PP.fcat [PP.text "\\",
+ppSt' _ True l ((LAbst v ty) :@: t)  = PP.fcat [PP.text "\\",
                                                 PP.fsep (map (\(v,ty) -> (PP.text (varPp v)) PP.<+> pp ty)
                                                     (reverse ((v,ty):l))),
                                                         PP.text ".", ppSt' True True [] t]
@@ -54,7 +53,7 @@ ppSt' True rm _ (l :@: r)                     = PP.fsep [ppSt' True False [] l, 
 ppSt' False _ _ (l :@: r)                     = PP.parens (ppSt' True True [] (l :@: r))
 ppSt' _ _ _ (LAbst _ _)                         = error "Lambda>>ppSt': Lonely LAbst"
 
-parseTermSt :: Maybe (LTerm VarString STyped) -> Parser (LTerm VarString STyped)
+parseTermSt :: Maybe (LTerm VarString SType) -> Parser (LTerm VarString SType)
 parseTermSt Nothing = do
     PA.spaces
     do
@@ -68,7 +67,7 @@ parseTermSt (Just l) = do
         PA.option (l :@: t) $ PA.try (parseTermSt (Just (l :@: t)))
     PA.<?> "parseTermSt Just"
 
-parsePartSt :: Parser (LTerm VarString STyped)
+parsePartSt :: Parser (LTerm VarString SType)
 parsePartSt = do
     PA.spaces
     do
@@ -84,7 +83,7 @@ parsePartSt = do
         PA.spaces
         PA.char '.'
         t <- parseTermSt Nothing
-        return (foldr (\ (v,ty) t -> t :@: LAbst v (STyped ty)) t vl)
+        return (foldr (\ (v,ty) t -> t :@: LAbst v ty) t vl)
     PA.<|> do
         v <- varParse
         return (LVar v)
@@ -112,14 +111,14 @@ instance Typeable (LTerm VarInt SType) where
 
 instance Typeable (LTerm VarString SType) where
     typeof env term   = case getType env term of
-                                Just r     -> Just $ (canonicalizeType r,[])
+                                Just r -> Just $ (canonicalizeType r,[])
                                 Nothing    -> Nothing
     typeof' term = let env = map (\(v,i) -> (v, SAtom (typeVarGen !! i))) $ zip (freeVars term) [0..]
                         in  typeof env term
     typeofC term | isClosed term = case typeof [] term of
                                                 Just (r,_) -> Just r
                                                 Nothing    -> Nothing
-                 | otherwise = error "Types>>typeOfC: Term not closed"
+                 | otherwise = error ("Types>>typeOfC: Term not closed: " ++ pps term)
 
 -- | Get type for typed term (Lambda church calculus, a term is annotated with types)
 getType :: (TypeContext VarString) -> LTerm VarString SType -> Maybe SType
@@ -158,10 +157,10 @@ instance Typeable (LTerm VarString Untyped) where
     typeofC term | isClosed term = case typeof [] term of
                                                 Just (r,_) -> Just r
                                                 Nothing    -> Nothing
-                 | otherwise = error "Types>>typeOfC: Term not closed"
+                 | otherwise = error ("Types>>typeOfC: Term not closed: " ++ pps term)
 
 -- | Convert an untyped term to a typed term if possible
-typeLambda :: TypeContext VarString -> LTerm VarString Untyped -> Maybe (LTerm VarString STyped)
+typeLambda :: TypeContext VarString -> LTerm VarString Untyped -> Maybe (LTerm VarString SType)
 typeLambda env term = case reconstructType (length env,env) term of
                             Just (_,_,_,nt) -> Just $ nt
                             Nothing    -> Nothing
@@ -176,7 +175,7 @@ untypeLambda (LAbst _ _)          = error "LambdaType>>untypeLambda: Lonely LAbs
 
 -- | Infer a simple type for a lambda term
 reconstructType :: (Int,TypeContext VarString) -> LTerm VarString t ->
-                        Maybe (Int,TypeContext VarString, SType, LTerm VarString STyped)
+                        Maybe (Int,TypeContext VarString, SType, LTerm VarString SType)
 reconstructType (index,env) (LVar s) =
     case lookup s env of
         Nothing -> error ("LambdaTyped>>reconstructType: Unbound variableV: " ++ s ++ " env: " ++ show env)
@@ -185,25 +184,22 @@ reconstructType (index,env) (LAbst s _ :@: term) =
     let newType = SAtom $ typeVarGen !! index
     in case reconstructType (index + 1,(s,newType):env) term of
                 Nothing                  -> Nothing
-                Just (_ind, env',nt,nterm) -> case lookup s env' of
-                                                Nothing -> error ("LambdaTyped>>reconstructType: Unbound variableL: "
-                                                                ++ s ++ " env: " ++ show env')
-                                                Just t  -> Just (index,tail env',t :->: nt,
-                                                                (LAbst s (STyped t) :@: nterm))
-reconstructType (index,env) (l :@: r) =
-    let newType = SAtom $ typeVarGen !! index
-    in case reconstructType (index+1,env) r of
-        Nothing                   -> Nothing
-        Just (index',env',tr,ntr) ->
-            case reconstructType (index',env') l of
-                Nothing                 -> Nothing
-                Just (index'',env'',tl,ntl) ->
-                    case unifyTypes tl (tr :->: newType)  of
-                        Nothing -> Nothing
-                        Just subst ->
-                            let newEnv = substituteEnv subst env''
-                            in Just (index'',newEnv,newType,ntl :@: ntr)
+                Just (_ind, env',nt,nterm) ->
+                    case lookup s env' of
+                        Nothing -> error ("LambdaTyped>>reconstructType: Unbound variableL: "
+                                        ++ s ++ " env: " ++ show env')
+                        Just t  -> Just (index,tail env',t :->: nt,
+                                            (LAbst s t :@: nterm))
+reconstructType (index,env) (l :@: r) = do
+        let newType = SAtom $ typeVarGen !! index
+        (index',env',tr,ntr) <- reconstructType (index+1,env) r
+        (index'',env'',tl,ntl) <- reconstructType (index',env') l
+        subst <- unifyTypes tl (tr :->: newType)
+        let newEnv = substituteContext subst env''
+            newType' = substituteType subst newType
+        return (index'',newEnv,newType',ntl :@: ntr)
 reconstructType _ (LAbst _ _) = error "LambdaTyped>>inferSType: Lonely LAbst"
+
 
 
 

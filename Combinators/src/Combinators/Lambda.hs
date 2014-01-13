@@ -22,7 +22,7 @@ module Combinators.Lambda (
 -- ** LTerm type
     LTerm(..),
     Untyped(..),
-    Typed(..),
+    Typed,
 -----------------------------------------------------------------------------
 -- ** Properties
     occurs,
@@ -52,6 +52,7 @@ import Data.Maybe (fromJust)
 import qualified Data.List as List
        (lookup, elemIndex, elem, intersect, nub)
 import Control.Monad (liftM)
+import Debug.Trace (trace)
 --import Debug.Trace (trace)
 
 -----------------------------------------------------------------------------
@@ -224,7 +225,7 @@ canonicalizeLambda t =
 canonicalizeLambda' :: Int -> [(String,Int)] -> LTerm VarString t -> (Int, [(String,Int)], LTerm VarString t)
 canonicalizeLambda' i env (LVar s) =
     case lookup s env of
-        Just ind | ind > 0   ->  (i,env,LVar (nameGen !! ind))
+        Just ind | ind >= 0   ->  (i,env,LVar (nameGen !! ind))
                  | otherwise ->  (i,env,LVar (nameGenFV !! negate ind))
         Nothing -> error ("Lambda>>canonicalizeLambda: Not closed, found: " ++ s)
 canonicalizeLambda' i env (LAbst s t :@: r) =
