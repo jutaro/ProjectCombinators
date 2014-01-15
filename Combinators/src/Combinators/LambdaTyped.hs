@@ -17,7 +17,8 @@
 
 module Combinators.LambdaTyped (
     typeLambda,
-    untypeLambda
+    untypeLambda,
+    reconstructType
 ) where
 
 import Combinators.BinaryTree (PP(..), PP)
@@ -30,6 +31,7 @@ import qualified Text.PrettyPrint as PP
 import Text.Parsec.String (Parser)
 import qualified Text.Parsec as PA
        (many1, (<|>), char, (<?>), try, option, spaces)
+import Debug.Trace (trace)
 -- import Debug.Trace (trace)
 
 -----------------------------------------------------------------------------
@@ -174,32 +176,36 @@ untypeLambda (LAbst _ _)          = error "LambdaType>>untypeLambda: Lonely LAbs
 
 
 -- | Infer a simple type for a lambda term
-reconstructType :: (Int,TypeContext VarString) -> LTerm VarString t ->
+reconstructType' :: (Int,TypeContext VarString) -> LTerm VarString Untyped ->
                         Maybe (Int,TypeContext VarString, SType, LTerm VarString SType)
-reconstructType (index,env) (LVar s) =
+reconstructType' (index,env) (LVar s) =
     case lookup s env of
         Nothing -> error ("LambdaTyped>>reconstructType: Unbound variableV: " ++ s ++ " env: " ++ show env)
         Just t  -> Just (index, env,t,LVar s)
-reconstructType (index,env) (LAbst s _ :@: term) =
+reconstructType' (index,env) (LAbst s _ :@: term) =
     let newType = SAtom $ typeVarGen !! index
     in case reconstructType (index + 1,(s,newType):env) term of
                 Nothing                  -> Nothing
-                Just (_ind, env',nt,nterm) ->
+                Just (ind, env',nt,nterm) ->
                     case lookup s env' of
                         Nothing -> error ("LambdaTyped>>reconstructType: Unbound variableL: "
                                         ++ s ++ " env: " ++ show env')
-                        Just t  -> Just (index,tail env',t :->: nt,
+                        Just t  -> Just (ind,tail env',t :->: nt,
                                             (LAbst s t :@: nterm))
-reconstructType (index,env) (l :@: r) = do
-        let newType = SAtom $ typeVarGen !! index
-        (index',env',tr,ntr) <- reconstructType (index+1,env) r
+reconstructType' (index,env) (l :@: r) = do
+        (index',env',tr,ntr) <- reconstructType (index,env) r
         (index'',env'',tl,ntl) <- reconstructType (index',env') l
+        let newType = SAtom $ typeVarGen !! index''
         subst <- unifyTypes tl (tr :->: newType)
         let newEnv = substituteContext subst env''
             newType' = substituteType subst newType
-        return (index'',newEnv,newType',ntl :@: ntr)
-reconstructType _ (LAbst _ _) = error "LambdaTyped>>inferSType: Lonely LAbst"
+        return (index''+1,newEnv,newType',ntl :@: ntr)
+reconstructType' _ (LAbst _ _) = error "LambdaTyped>>inferSType: Lonely LAbst"
 
-
-
+reconstructType :: (Int,TypeContext VarString) -> LTerm VarString Untyped ->
+                        Maybe (Int,TypeContext VarString, SType, LTerm VarString SType)
+reconstructType (index,env) t = let res = trace ("reconstructType (index,env) " ++ show (index,env) ++ " t: " ++ pps t)
+                                            $ reconstructType' (index,env) t
+                                in  trace (" res: " ++ show res)
+                                    $ res
 

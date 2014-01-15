@@ -28,6 +28,7 @@ module Combinators.Types (
     substituteType,
     substituteContext,
     unifyTypes,
+    unifyTypesR,
     typeVars,
     parseType
 ) where
@@ -40,6 +41,7 @@ import Combinators.Variable (varParse, VarString)
 import Text.PrettyPrint
        (($$), (<+>), braces, empty, Doc, text, (<>), parens, brackets)
 import Data.Maybe (isJust)
+import Debug.Trace (trace)
 
 -----------------------------------------------------------------------------
 -- * Simple Types
@@ -224,6 +226,10 @@ substituteType subst (l :->: r) = substituteType subst l :->: substituteType sub
 substituteContext :: Substitutor -> TypeContext v -> TypeContext v
 substituteContext subst env = map (\(n,t) -> (n,substituteType subst t)) env
 
+substituteSubstitutor :: Substitutor -> Substitutor -> Substitutor
+substituteSubstitutor subsAppliable subsToApply =
+    map (\ (fst,t) -> (fst, substituteType subsAppliable t)) subsToApply
+
 -- | List all type atoms of a type
 typeVars :: SType -> [TypeAtom]
 typeVars (SAtom n)       = [n]
@@ -231,16 +237,36 @@ typeVars (l :->: r)       = typeVars l ++ typeVars r
 
 -- | Unify two types and returns just a substitution if possible,
 -- and Nothing if it is not possible
-unifyTypes :: SType -> SType -> Maybe Substitutor
-unifyTypes t1 t2       | t1 == t2                  = Just []
-unifyTypes (SAtom s) b | not (elem s (typeVars b)) = Just [(s,b)]
+-- Equal type var names in both STypes means equal types in both formulars,
+-- if you dont want these use unifyTypesR
+unifyTypes, unifyTypes' :: SType -> SType -> Maybe Substitutor
+unifyTypes' t1 t2       | t1 == t2                   = Just []
+unifyTypes' (SAtom s) b | not (elem s (typeVars b))   = Just [(s,b)]
                        | otherwise                 = Nothing
-unifyTypes (l :->: r) (SAtom s)                    = unifyTypes (SAtom s) (l :->: r)
-unifyTypes (l1 :->: r1) (l2 :->: r2)               =
+unifyTypes' (l :->: r) (SAtom s)                     = unifyTypes (SAtom s) (l :->: r)
+unifyTypes' (l1 :->: r1) (l2 :->: r2)                 =
     case unifyTypes r1 r2 of
         Nothing -> Nothing
         Just substr ->
             case unifyTypes (substituteType substr l1)
                        (substituteType substr l2) of
                 Nothing -> Nothing
-                Just substl -> Just (substl ++ substr)
+                Just substl -> Just (substl ++ (substituteSubstitutor substl substr))
+
+unifyTypes t1 t2 = let res = unifyTypes' t1 t2
+                   in trace ("unifyTypes t1: " ++ pps t1 ++ " t2: " ++ pps t2 ++ " res: " ++ show res)
+                        res
+
+-- | Unify two types and returns just a substitution if possible,
+-- and Nothing if it is not possible
+-- Equal type var names in both STypes gets renamed in the second formula
+unifyTypesR :: SType -> SType -> (SType,Maybe Substitutor)
+unifyTypesR type1 type2 =
+    let varNames = typeVars type1
+        renamed = renameType type2 varNames
+    in (renamed, unifyTypes type1 renamed)
+  where
+    renameType (SAtom s) atomList | elem s atomList = renameType (SAtom (s++"'")) atomList
+                                  | otherwise       = (SAtom s)
+    renameType (l :->: r) atomList                   = renameType l atomList :->: renameType r atomList
+

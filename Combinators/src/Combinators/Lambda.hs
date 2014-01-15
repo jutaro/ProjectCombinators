@@ -363,7 +363,12 @@ fromLambdaB = fromLambdaB' []
                                             Nothing -> if ind < 0
                                                             then LVar "grook"
                                                             else LVar (nameGenFV !! (ind - length env))
-    fromLambdaB' env (LAbst str ty :@: t) = LAbst str ty :@: fromLambdaB' (str:env) t
+    fromLambdaB' env (LAbst str ty :@: t) =
+        if elem str env
+            then
+                let newName = str ++ "'"
+                in fromLambdaB' env (LAbst newName ty :@: t)
+            else LAbst str ty :@: fromLambdaB' (str:env) t
     fromLambdaB' env (lt :@: rt)       = fromLambdaB' env lt :@: fromLambdaB' env rt
     fromLambdaB' _env (LAbst n _)        = error $ "Lambda>>toLambdaB': Lonely Abstraction " ++ show n
 

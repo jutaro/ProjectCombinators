@@ -27,6 +27,7 @@ import Combinators.Combinator
 import Combinators.Variable (VarString)
 import Combinators.Reduction (TermString(..))
 import Combinators.BinaryTree (PP(..))
+import Debug.Trace (trace)
 
 -----------------------------------------------------------------------------
 -- ** Combinators
@@ -47,20 +48,22 @@ instance Basis b => Typeable (CTerm b) where
 
 
 primTypeOf :: Basis b => TypeContext VarString -> Int -> CTerm b -> Maybe (SType, TypeContext VarString, Int)
-primTypeOf context ind (Const c) = let (newInd, newType) = primitiveType ind c
-                                   in Just (newType,context,newInd)
-primTypeOf context ind (Var s)   = case lookup s context of
+primTypeOf cont ind (Const c) = let (newInd, newType) = primitiveType ind c
+                                   in Just (newType,cont,newInd)
+primTypeOf cont ind (Var s)   = case lookup s cont of
                                         Nothing -> let newType = SAtom (typeVarGen !! ind)
-                                                  in Just (newType,(s,newType):context,ind + 1)
-                                        Just nt -> Just (nt,context,ind)
-primTypeOf context ind (l :@ r)  = do
+                                                  in Just (newType,(s,newType):cont,ind + 1)
+                                        Just nt -> Just (nt,cont,ind)
+primTypeOf cont ind (l :@ r)  = do
                                     let newType = SAtom $ typeVarGen !! ind
-                                    (r',cont',ind') <- primTypeOf context (ind+1) r
+                                    (r',cont',ind') <- primTypeOf cont (ind+1) r
                                     (l',cont'',ind'') <- primTypeOf cont' ind' l
                                     subst <- unifyTypes l' (r' :->: newType)
                                     let newCont = substituteContext subst cont''
                                         newType' = substituteType subst newType
-                                    return (newType',newCont,ind'')
+                                    trace ("primTypeOf l: " ++ pps l' ++ " r: " ++ pps r'
+                                            ++ " subst " ++ pps subst ++ " newType' " ++ pps newType') $
+                                                return (newType',newCont,ind'')
 
 primitiveType :: Int -> Combinator c -> (Int,SType)
 primitiveType ind comb = let ((ind',_),t) = replaceVars (ind,[]) (combType comb)
