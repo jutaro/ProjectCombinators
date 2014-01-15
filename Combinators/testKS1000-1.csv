@@ -132,11 +132,11 @@
 "S (S (S K))";"S (S (S K))";"(\u v w.u w (v w))
 ((\u v w.u w (v w)) ((\u v w.u w (v w)) (\u v.u)))";"(\u v.v (u v))";"(((a -> b) -> a) -> a -> b) -> ((a -> b) -> a) -> a";"((a -> b) -> a) -> (a -> b) -> b";"(((a -> b) -> a) -> a -> b) -> ((a -> b) -> a) -> a";"(((a -> b) -> a) -> a -> b) -> ((a -> b) -> a) -> a"
 "S S S S";"S S (S S)";"(\u v w.u w (v w)) (\u v w.u w (v w))
-((\u v w.u w (v w)) (\u v w.u w (v w)))";"(\u v.u v (\w.v w (u v w)))";"Nothing";"((a -> b -> c) -> a -> b) -> (a -> b -> c) -> d";"Nothing";"Nothing"
+((\u v w.u w (v w)) (\u v w.u w (v w)))";"(\u v.u v (\w.v w (u v w)))";"Nothing";"Nothing";"Nothing";"Nothing"
 "S (S S) S";"S (S S) S";"(\u v w.u w (v w)) ((\u v w.u w (v w)) (\u v w.u w (v w)))
-(\u v w.u w (v w))";"(\u v.u (u (\w x.u x (w x)) v) (v (u (\w x.u x (w x)) v)))";"Nothing";"(a -> b -> c) -> (c -> d) -> e";"Nothing";"Nothing"
+(\u v w.u w (v w))";"(\u v.u (u (\w x.u x (w x)) v) (v (u (\w x.u x (w x)) v)))";"Nothing";"Nothing";"Nothing";"Nothing"
 "S S (S S)";"S S (S S)";"(\u v w.u w (v w)) (\u v w.u w (v w))
-((\u v w.u w (v w)) (\u v w.u w (v w)))";"(\u v.u v (\w.v w (u v w)))";"Nothing";"((a -> b -> c) -> a -> b) -> (a -> b -> c) -> d";"Nothing";"Nothing"
+((\u v w.u w (v w)) (\u v w.u w (v w)))";"(\u v.u v (\w.v w (u v w)))";"Nothing";"Nothing";"Nothing";"Nothing"
 "S (S S S)";"S (S S S)";"(\u v w.u w (v w))
 ((\u v w.u w (v w)) (\u v w.u w (v w)) (\u v w.u w (v w)))";"(\u v.v (u v) (\w.v w (u v w)))";"Nothing";"Nothing";"Nothing";"Nothing"
 "S (S (S S))";"S (S (S S))";"(\u v w.u w (v w))
@@ -508,13 +508,13 @@ b
 "K S (S (S S))";"S";"(\u v w.u w (v w))";"(\u v w.u w (v w))";"(a -> b -> c) -> (a -> b) -> a -> c";"(a -> b -> c) -> (a -> b) -> a -> c";"(a -> b -> c) -> (a -> b) -> a -> c";"(a -> b -> c) -> (a -> b) -> a -> c"
 "K (S S S S)";"K (S S (S S))";"(\u v.u)
 ((\u v w.u w (v w)) (\u v w.u w (v w))
- ((\u v w.u w (v w)) (\u v w.u w (v w))))";"(\u v w.v w (\x.w x (v w x)))";"Nothing";"a -> ((b -> c -> d) -> b -> c) -> (b -> c -> d) -> e";"Nothing";"Nothing"
+ ((\u v w.u w (v w)) (\u v w.u w (v w))))";"(\u v w.v w (\x.w x (v w x)))";"Nothing";"Nothing";"Nothing";"Nothing"
 "K (S (S S) S)";"K (S (S S) S)";"(\u v.u)
 ((\u v w.u w (v w)) ((\u v w.u w (v w)) (\u v w.u w (v w)))
- (\u v w.u w (v w)))";"(\u v w.v (v (\x y.v y (x y)) w) (w (v (\x y.v y (x y)) w)))";"Nothing";"a -> (b -> c -> d) -> (d -> e) -> f";"Nothing";"Nothing"
+ (\u v w.u w (v w)))";"(\u v w.v (v (\x y.v y (x y)) w) (w (v (\x y.v y (x y)) w)))";"Nothing";"Nothing";"Nothing";"Nothing"
 "K (S S (S S))";"K (S S (S S))";"(\u v.u)
 ((\u v w.u w (v w)) (\u v w.u w (v w))
- ((\u v w.u w (v w)) (\u v w.u w (v w))))";"(\u v w.v w (\x.w x (v w x)))";"Nothing";"a -> ((b -> c -> d) -> b -> c) -> (b -> c -> d) -> e";"Nothing";"Nothing"
+ ((\u v w.u w (v w)) (\u v w.u w (v w))))";"(\u v w.v w (\x.w x (v w x)))";"Nothing";"Nothing";"Nothing";"Nothing"
 "K (S (S S S))";"K (S (S S S))";"(\u v.u)
 ((\u v w.u w (v w))
  ((\u v w.u w (v w)) (\u v w.u w (v w)) (\u v w.u w (v w))))";"(\u v w.w (v w) (\x.w x (v w x)))";"Nothing";"Nothing";"Nothing";"Nothing"
@@ -791,9 +791,9 @@ a -> ((b -> c -> d) -> b -> c) -> b -> d"
 "S S K (K S)";"S (K S) (K (K S))";"(\u v w.u w (v w)) ((\u v.u) (\u v w.u w (v w)))
 ((\u v.u) ((\u v.u) (\u v w.u w (v w))))";"(\u v w x y.v w y (x y))";"a -> (b -> c -> d -> e) -> b -> (c -> d) -> c -> e";"a -> (b -> c -> d -> e) -> b -> (c -> d) -> c -> e";"Nothing";"a -> (b -> c -> d -> e) -> b -> (c -> d) -> c -> e"
 "S (S K K) S";"S (S K K) S";"(\u v w.u w (v w)) ((\u v w.u w (v w)) (\u v.u) (\u v.u))
-(\u v w.u w (v w))";"(\u.u (\v w.u w (v w)))";"(a -> b -> c) -> d";"(a -> b -> c) -> d";"(a -> b -> c) -> d";"(a -> b -> c) -> d"
+(\u v w.u w (v w))";"(\u.u (\v w.u w (v w)))";"(a -> b -> c) -> d";"Nothing";"(a -> b -> c) -> d";"(a -> b -> c) -> d"
 "S (S (K K)) S";"S (S (K K)) S";"(\u v w.u w (v w)) ((\u v w.u w (v w)) ((\u v.u) (\u v.u)))
-(\u v w.u w (v w))";"(\u v.u (\w x.u x (w x)))";"Nothing";"(a -> b -> c) -> d -> e";"Nothing";"Nothing"
+(\u v w.u w (v w))";"(\u v.u (\w x.u x (w x)))";"Nothing";"Nothing";"Nothing";"Nothing"
 "S (S K) (K S)";"S (S K) (K S)";"(\u v w.u w (v w)) ((\u v w.u w (v w)) (\u v.u))
 ((\u v.u) (\u v w.u w (v w)))";"(\u v w x.v x (w x))";"(((a -> b -> c) -> (a -> b) -> a -> c) -> d)
 ->
@@ -863,10 +863,10 @@ a -> ((b -> c -> d) -> b -> c) -> b -> d"
 ->
 ((a -> b -> c) -> a -> b) -> a -> c"
 "S (S K S) S";"S (S K S) S";"(\u v w.u w (v w)) ((\u v w.u w (v w)) (\u v.u) (\u v w.u w (v w)))
-(\u v w.u w (v w))";"(\u.u (\v w.u w (v w)))";"Nothing";"(a -> b -> c) -> d";"Nothing";"Nothing"
+(\u v w.u w (v w))";"(\u.u (\v w.u w (v w)))";"Nothing";"Nothing";"Nothing";"Nothing"
 "S (S (K S)) S";"S (S (K S)) S";"(\u v w.u w (v w))
 ((\u v w.u w (v w)) ((\u v.u) (\u v w.u w (v w))))
-(\u v w.u w (v w))";"(\u v w.u (\x y.u y (x y)) w (v w))";"Nothing";"(a -> b -> c) -> (d -> e) -> d -> f";"Nothing";"Nothing"
+(\u v w.u w (v w))";"(\u v w.u (\x y.u y (x y)) w (v w))";"Nothing";"Nothing";"Nothing";"Nothing"
 "S (S K) (S S)";"S (S K) (S S)";"(\u v w.u w (v w)) ((\u v w.u w (v w)) (\u v.u))
 ((\u v w.u w (v w)) (\u v w.u w (v w)))";"(\u v w.v w (u v w))";"Nothing";"((a -> b -> c) -> a -> b) -> (a -> b -> c) -> a -> c";"Nothing";"Nothing"
 "S S (K S S)";"S S S";"(\u v w.u w (v w)) (\u v w.u w (v w)) (\u v w.u w (v w))";"(\u v.u v (\w.u w (v w)))";"Nothing";"Nothing";"Nothing";"Nothing"
@@ -948,10 +948,10 @@ a -> ((b -> c -> d) -> b -> c) -> b -> d"
 "S S S (K S)";"S (K S) (S (K S))";"(\u v w.u w (v w)) ((\u v.u) (\u v w.u w (v w)))
 ((\u v w.u w (v w)) ((\u v.u) (\u v w.u w (v w))))";"(\u v w x.u w x (v w x))";"(a -> b -> c -> d) -> (a -> b -> c) -> a -> b -> d";"(a -> b -> c -> d) -> (a -> b -> c) -> a -> b -> d";"Nothing";"(a -> b -> c -> d) -> (a -> b -> c) -> a -> b -> d"
 "S (S S K) S";"S (S S K) S";"(\u v w.u w (v w)) ((\u v w.u w (v w)) (\u v w.u w (v w)) (\u v.u))
-(\u v w.u w (v w))";"(\u.u (\v w.u w (v w)) u)";"Nothing";"(a -> b -> c) -> d";"Nothing";"Nothing"
+(\u v w.u w (v w))";"(\u.u (\v w.u w (v w)) u)";"Nothing";"Nothing";"Nothing";"Nothing"
 "S (S (S K)) S";"S (S (S K)) S";"(\u v w.u w (v w))
 ((\u v w.u w (v w)) ((\u v w.u w (v w)) (\u v.u)))
-(\u v w.u w (v w))";"(\u.u (\v w.u w (v w)))";"Nothing";"(a -> b -> c) -> d";"Nothing";"Nothing"
+(\u v w.u w (v w))";"(\u.u (\v w.u w (v w)))";"Nothing";"Nothing";"Nothing";"Nothing"
 "S (S S) (K S)";"S (S S) (K S)";"(\u v w.u w (v w)) ((\u v w.u w (v w)) (\u v w.u w (v w)))
 ((\u v.u) (\u v w.u w (v w)))";"(\u v w.v w (u (\x y z.x z (y z)) v w))";"(((a -> b -> c) -> (a -> b) -> a -> c) -> (a -> b -> c) -> a -> b)
 ->
@@ -965,7 +965,7 @@ a -> ((b -> c -> d) -> b -> c) -> b -> d"
 "S S (S K S)";"S S (S K S)";"(\u v w.u w (v w)) (\u v w.u w (v w))
 ((\u v w.u w (v w)) (\u v.u) (\u v w.u w (v w)))";"(\u v.u v (u v))";"Nothing";"Nothing";"Nothing";"Nothing"
 "S S (S (K S))";"S S (S (K S))";"(\u v w.u w (v w)) (\u v w.u w (v w))
-((\u v w.u w (v w)) ((\u v.u) (\u v w.u w (v w))))";"(\u v.u v (\w x.u v x (w x)))";"Nothing";"(a -> b -> c -> d) -> a -> e";"Nothing";"Nothing"
+((\u v w.u w (v w)) ((\u v.u) (\u v w.u w (v w))))";"(\u v.u v (\w x.u v x (w x)))";"Nothing";"Nothing";"Nothing";"Nothing"
 "S (S S K S)";"S (S S (K S))";"(\u v w.u w (v w))
 ((\u v w.u w (v w)) (\u v w.u w (v w))
  ((\u v.u) (\u v w.u w (v w))))";"(\u v.v (u v) (\w x.u v x (w x)))";"(((a -> b -> c) -> ((a -> b) -> a -> c) -> d) -> a -> b -> c)
@@ -1066,29 +1066,23 @@ a -> ((b -> c -> d) -> b -> c) -> b -> d"
 (\u v w.u w (v w))";"(\u.u (\v w.u w (v w)) (\v.u v (\w.u w (v w))))";"Nothing";"Nothing";"Nothing";"Nothing"
 "S (S (S S)) S";"S (S (S S)) S";"(\u v w.u w (v w))
 ((\u v w.u w (v w)) ((\u v w.u w (v w)) (\u v w.u w (v w))))
-(\u v w.u w (v w))";"(\u v.u (\w x.u x (w x)) v (u v (u (\w x.u x (w x)) v)))";"Nothing";"(a -> b -> c) -> a -> d";"Nothing";"Nothing"
+(\u v w.u w (v w))";"(\u v.u (\w x.u x (w x)) v (u v (u (\w x.u x (w x)) v)))";"Nothing";"Nothing";"Nothing";"Nothing"
 "S (S S) (S S)";"S (S S) (S S)";"(\u v w.u w (v w)) ((\u v w.u w (v w)) (\u v w.u w (v w)))
-((\u v w.u w (v w)) (\u v w.u w (v w)))";"(\u v.v (u (\w x.w x (u w x)) v) (u v (u (\w x.w x (u w x)) v)))";"Nothing";"((a -> a -> b) -> a -> a) -> (a -> a -> b) -> c";"Nothing";"Nothing"
+((\u v w.u w (v w)) (\u v w.u w (v w)))";"(\u v.v (u (\w x.w x (u w x)) v) (u v (u (\w x.w x (u w x)) v)))";"Nothing";"Nothing";"Nothing";"Nothing"
 "S S (S S S)";"S S (S S S)";"(\u v w.u w (v w)) (\u v w.u w (v w))
 ((\u v w.u w (v w)) (\u v w.u w (v w)) (\u v w.u w (v w)))";"(\u v.u v (u v (\w.u w (v w))))";"Nothing";"Nothing";"Nothing";"Nothing"
 "S S (S (S S))";"S S (S (S S))";"(\u v w.u w (v w)) (\u v w.u w (v w))
-((\u v w.u w (v w)) ((\u v w.u w (v w)) (\u v w.u w (v w))))";"(\u v.u v (\w.u v w (v (u v) w)))";"Nothing";"(((a -> b -> c) -> a -> b) -> a -> b -> c)
-->
-((a -> b -> c) -> a -> b) -> d";"Nothing";"Nothing"
+((\u v w.u w (v w)) ((\u v w.u w (v w)) (\u v w.u w (v w))))";"(\u v.u v (\w.u v w (v (u v) w)))";"Nothing";"Nothing";"Nothing";"Nothing"
 "S (S S S S)";"S (S S (S S))";"(\u v w.u w (v w))
 ((\u v w.u w (v w)) (\u v w.u w (v w))
- ((\u v w.u w (v w)) (\u v w.u w (v w))))";"(\u v.v (u v) (\w.u v w (v (u v) w)))";"Nothing";"(((a -> b -> c) -> a -> b) -> a -> b -> c)
-->
-((a -> b -> c) -> a -> b) -> d";"Nothing";"Nothing"
+ ((\u v w.u w (v w)) (\u v w.u w (v w))))";"(\u v.v (u v) (\w.u v w (v (u v) w)))";"Nothing";"Nothing";"Nothing";"Nothing"
 "S (S (S S) S)";"S (S (S S) S)";"(\u v w.u w (v w))
 ((\u v w.u w (v w)) ((\u v w.u w (v w)) (\u v w.u w (v w)))
  (\u v w.u w (v w)))";"(\u v.
- v (v (\w x.v x (w x)) (u v)) (u v (v (\w x.v x (w x)) (u v))))";"Nothing";"((a -> b -> c) -> c -> d) -> (a -> b -> c) -> e";"Nothing";"Nothing"
+ v (v (\w x.v x (w x)) (u v)) (u v (v (\w x.v x (w x)) (u v))))";"Nothing";"Nothing";"Nothing";"Nothing"
 "S (S S (S S))";"S (S S (S S))";"(\u v w.u w (v w))
 ((\u v w.u w (v w)) (\u v w.u w (v w))
- ((\u v w.u w (v w)) (\u v w.u w (v w))))";"(\u v.v (u v) (\w.u v w (v (u v) w)))";"Nothing";"(((a -> b -> c) -> a -> b) -> a -> b -> c)
-->
-((a -> b -> c) -> a -> b) -> d";"Nothing";"Nothing"
+ ((\u v w.u w (v w)) (\u v w.u w (v w))))";"(\u v.v (u v) (\w.u v w (v (u v) w)))";"Nothing";"Nothing";"Nothing";"Nothing"
 "S (S (S S S))";"S (S (S S S))";"(\u v w.u w (v w))
 ((\u v w.u w (v w))
  ((\u v w.u w (v w)) (\u v w.u w (v w)) (\u v w.u w (v w))))";"(\u v.u v (v (u v)) (\w.u v w (v (u v) w)))";"Nothing";"Nothing";"Nothing";"Nothing"
