@@ -24,9 +24,10 @@ module Combinators.Types (
     canonicalizeType,
     canonicalizeTypeContext,
     TypeContext,
-    Substitutor,
-    substituteType,
-    substituteContext,
+    Substitution,
+    idSubstitution,
+    substType,
+    substContext,
     unifyTypes,
     unifyTypesR,
     typeVars,
@@ -212,23 +213,26 @@ parseEnvEntry = do
 -----------------------------------------------------------------------------
 -- ** Type substitution and unification
 
--- | A substituor binds the type that should be substituted to a type
-type Substitutor = [(TypeAtom,SType)]
+-- | A substition binds the type that should be substituted to a type
+type Substitution = [(String,SType)]
+
+-- | The identity substitution
+idSubstitution :: Substitution
+idSubstitution = []
+
+-- | Add a new substitutor to a substitution
+updateSubst  :: (String, SType) -> Substitution -> Substitution
+updateSubst (atom,typ) subst = (atom,typ):subst
 
 -- | Apply a substitutor to a type
-substituteType :: Substitutor -> SType -> SType
-substituteType subst (SAtom a) = case lookup a subst of
-                                    Nothing -> (SAtom a)
-                                    Just replace -> replace
-substituteType subst (l :->: r) = substituteType subst l :->: substituteType subst r
+substType :: Substitution -> SType -> SType
+substType s (SAtom x) = foldl (\ t (subs,repl) -> if t == SAtom subs then repl else t) (SAtom x) s
+substType s (t1 :->: t2) = (substType s t1) :->: (substType s t2)
+
 
 -- | Apply a substitutor to an environment
-substituteContext :: Substitutor -> TypeContext v -> TypeContext v
-substituteContext subst env = map (\(n,t) -> (n,substituteType subst t)) env
-
-substituteSubstitutor :: Substitutor -> Substitutor -> Substitutor
-substituteSubstitutor subsAppliable subsToApply =
-    map (\ (fst,t) -> (fst, substituteType subsAppliable t)) subsToApply
+substContext :: Substitution -> TypeContext v -> TypeContext v
+substContext subst env = map (\(n,t) -> (n,substType subst t)) env
 
 -- | List all type atoms of a type
 typeVars :: SType -> [TypeAtom]
@@ -239,28 +243,23 @@ typeVars (l :->: r)       = typeVars l ++ typeVars r
 -- and Nothing if it is not possible
 -- Equal type var names in both STypes means equal types in both formulars,
 -- if you dont want these use unifyTypesR
-unifyTypes, unifyTypes' :: SType -> SType -> Maybe Substitutor
-unifyTypes' t1 t2       | t1 == t2                   = Just []
-unifyTypes' (SAtom s) b | not (elem s (typeVars b))   = Just [(s,b)]
-                       | otherwise                 = Nothing
+unifyTypes, unifyTypes' :: SType -> SType -> Maybe Substitution
+unifyTypes' t1 t2       | t1 == t2                   = Just idSubstitution
+unifyTypes' (SAtom s) b | not (elem s (typeVars b))  = Just (updateSubst (s,b) idSubstitution)
+                        | otherwise                  = Nothing
 unifyTypes' (l :->: r) (SAtom s)                     = unifyTypes (SAtom s) (l :->: r)
-unifyTypes' (l1 :->: r1) (l2 :->: r2)                 =
-    case unifyTypes r1 r2 of
-        Nothing -> Nothing
-        Just substr ->
-            case unifyTypes (substituteType substr l1)
-                       (substituteType substr l2) of
-                Nothing -> Nothing
-                Just substl -> Just (substl ++ (substituteSubstitutor substl substr))
+unifyTypes' (l1 :->: r1) (l2 :->: r2)                = do
+    s1 <- unifyTypes l1 l2
+    s2 <- unifyTypes (substType s1 r1) (substType s1 r2)
+    return (s2 ++ s1)
 
-unifyTypes t1 t2 = let res = unifyTypes' t1 t2
-                   in trace ("unifyTypes t1: " ++ pps t1 ++ " t2: " ++ pps t2 ++ " res: " ++ show res)
-                        res
+unifyTypes t1 t2 = let res = trace ("unifyTypes t1: " ++ pps t1 ++ " t2: " ++ pps t2) $ unifyTypes' t1 t2
+                   in trace ("unifyTypes res: " ++ show res) $ res
 
 -- | Unify two types and returns just a substitution if possible,
 -- and Nothing if it is not possible
--- Equal type var names in both STypes gets renamed in the second formula
-unifyTypesR :: SType -> SType -> (SType,Maybe Substitutor)
+-- Equal type var names in both STypes gets renamed in the second formula before unification
+unifyTypesR :: SType -> SType -> (SType,Maybe Substitution)
 unifyTypesR type1 type2 =
     let varNames = typeVars type1
         renamed = renameType type2 varNames

@@ -20,7 +20,7 @@ module Combinators.CombinatorTyped (
 ) where
 
 import Combinators.Types
-       (substituteType, substituteContext, unifyTypes, TypeContext,
+       (substType, substContext, unifyTypes, TypeContext,
         Typeable(..), typeVarGen, SType(..),)
 import Combinators.Combinator
        (Combinator(..), CTerm(..), CTerm, Basis)
@@ -59,10 +59,10 @@ primTypeOf cont ind (l :@ r)  = do
                                     (r',cont',ind') <- primTypeOf cont (ind+1) r
                                     (l',cont'',ind'') <- primTypeOf cont' ind' l
                                     subst <- unifyTypes l' (r' :->: newType)
-                                    let newCont = substituteContext subst cont''
-                                        newType' = substituteType subst newType
+                                    let newCont = substContext subst cont''
+                                        newType' = substType subst newType
                                     trace ("primTypeOf l: " ++ pps l' ++ " r: " ++ pps r'
-                                            ++ " subst " ++ pps subst ++ " newType' " ++ pps newType') $
+                                            ++ " newType' " ++ pps newType') $
                                                 return (newType',newCont,ind'')
 
 primitiveType :: Int -> Combinator c -> (Int,SType)
