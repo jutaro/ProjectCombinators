@@ -253,8 +253,12 @@ unifyTypes' (l1 :->: r1) (l2 :->: r2)                = do
     s2 <- unifyTypes (substType s1 r1) (substType s1 r2)
     return (s2 ++ s1)
 
-unifyTypes t1 t2 = let res = trace ("unifyTypes t1: " ++ pps t1 ++ " t2: " ++ pps t2) $ unifyTypes' t1 t2
-                   in trace ("unifyTypes res: " ++ show res) $ res
+unifyTypes t1 t2 = let res =
+--                        trace ("unifyTypes t1: " ++ pps t1 ++ " t2: " ++ pps t2) $
+                                unifyTypes' t1 t2
+                   in
+--                        trace ("unifyTypes res: " ++ show res) $
+                        res
 
 -- | Unify two types and returns just a substitution if possible,
 -- and Nothing if it is not possible

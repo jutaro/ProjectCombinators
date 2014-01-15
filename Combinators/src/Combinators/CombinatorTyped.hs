@@ -33,7 +33,7 @@ import Debug.Trace (trace)
 -- ** Combinators
 
 instance Basis b => Typeable (CTerm b) where
-    typeof context term = case primTypeOf context (length context) term of
+    typeof context term = case reconstructType context (length context) term of
                             Nothing -> Nothing
                             Just (ty,cont,_) -> Just (ty,cont)
 
@@ -47,23 +47,32 @@ instance Basis b => Typeable (CTerm b) where
                                                 Just p -> Just (fst p)
 
 
-primTypeOf :: Basis b => TypeContext VarString -> Int -> CTerm b -> Maybe (SType, TypeContext VarString, Int)
-primTypeOf cont ind (Const c) = let (newInd, newType) = primitiveType ind c
+reconstructType :: Basis b => TypeContext VarString -> Int -> CTerm b -> Maybe (SType, TypeContext VarString, Int)
+reconstructType cont ind (Const c) = let (newInd, newType) = primitiveType ind c
                                    in Just (newType,cont,newInd)
-primTypeOf cont ind (Var s)   = case lookup s cont of
+reconstructType cont ind (Var s)   = case lookup s cont of
                                         Nothing -> let newType = SAtom (typeVarGen !! ind)
                                                   in Just (newType,(s,newType):cont,ind + 1)
                                         Just nt -> Just (nt,cont,ind)
-primTypeOf cont ind (l :@ r)  = do
-                                    let newType = SAtom $ typeVarGen !! ind
-                                    (r',cont',ind') <- primTypeOf cont (ind+1) r
-                                    (l',cont'',ind'') <- primTypeOf cont' ind' l
-                                    subst <- unifyTypes l' (r' :->: newType)
-                                    let newCont = substContext subst cont''
-                                        newType' = substType subst newType
-                                    trace ("primTypeOf l: " ++ pps l' ++ " r: " ++ pps r'
-                                            ++ " newType' " ++ pps newType') $
-                                                return (newType',newCont,ind'')
+reconstructType cont ind (l :@ r)  = do
+                                    (l',cont',ind') <- reconstructType cont (ind+1) l
+                                    (r',("_res",l''):cont'',ind'') <- reconstructType (("_res",l'):cont') ind' r
+                                    case l'' of
+                                        SAtom _ ->  do
+                                            let newType = SAtom $ typeVarGen !! ind
+                                            subst <- unifyTypes l'' (r' :->: newType)
+                                            let newCont = substContext subst cont''
+                                                newType' = substType subst newType
+--                                            trace ("reconstructType l: " ++ pps l'' ++ " r: " ++ pps r'
+--                                                    ++ " newType' " ++ pps newType') $
+                                            return (newType',newCont,ind'')
+                                        (ll :->: lr) -> do
+                                            subst <- unifyTypes ll r'
+                                            let newCont  = substContext subst cont''
+                                                newType' = substType subst lr
+--                                            trace ("reconstructType l: " ++ pps l'' ++ " r: " ++ pps r'
+--                                                    ++ " newType' " ++ pps newType') $
+                                            return (newType',newCont,ind'')
 
 primitiveType :: Int -> Combinator c -> (Int,SType)
 primitiveType ind comb = let ((ind',_),t) = replaceVars (ind,[]) (combType comb)
