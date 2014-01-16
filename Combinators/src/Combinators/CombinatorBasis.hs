@@ -66,15 +66,15 @@ b,c,w :: Basis b => Combinator b
 
 b = Combinator "B" ["u#","v#","w#"]
             (Var ("u#") :@ (Var ("v#") :@ Var ("w#")))
-                (SAtom "a" :->: SAtom "a")
+                ((SAtom "a" :->: SAtom "b") :->: (SAtom "c" :->: SAtom "a") :->: SAtom "c" :->: SAtom "b")
 
 c = Combinator "C" ["u#","v#","w#"]
             ((Var ("u#") :@ Var ("w#")) :@ Var ("v#"))
-                (SAtom "a" :->: SAtom "a")
+                ((SAtom "a" :->: SAtom "b" :->: SAtom "c") :->: SAtom "b" :->: SAtom "a" :->: SAtom "c")
 
-w = Combinator "W" ["u", "v"]
-            (Var ("u") :@ Var ("v") :@ Var ("v"))
-                (SAtom "a" :->: SAtom "a")
+w = Combinator "W" ["u#", "v#"]
+            (Var ("u#") :@ Var ("v#") :@ Var ("v#"))
+                ((SAtom "a" :->: SAtom "a" :->: SAtom "b") :->: SAtom "a" :->: SAtom "b")
 
 instance Basis IKBCW where
     primCombs = [i,k,b,c,w]

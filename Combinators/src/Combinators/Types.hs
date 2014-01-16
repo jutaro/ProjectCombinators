@@ -43,6 +43,7 @@ import Text.PrettyPrint
        (($$), (<+>), braces, empty, Doc, text, (<>), parens, brackets)
 import Data.Maybe (isJust)
 import Debug.Trace (trace)
+-- Jimport Debug.Trace (trace)
 
 -----------------------------------------------------------------------------
 -- * Simple Types
@@ -226,8 +227,12 @@ updateSubst (atom,typ) subst = (atom,typ):subst
 
 -- | Apply a substitutor to a type
 substType :: Substitution -> SType -> SType
-substType s (SAtom x) = foldl (\ t (subs,repl) -> if t == SAtom subs then repl else t) (SAtom x) s
-substType s (t1 :->: t2) = (substType s t1) :->: (substType s t2)
+substType s typ = foldr (\  (subs,repl) t -> substType' (subs,repl) t) typ s
+  where
+    substType' (subs,repl) (t1 :->: t2) = (substType' (subs,repl) t1) :->: (substType' (subs,repl) t2)
+    substType' (subs,repl) (SAtom x) | x == subs         = repl
+                                     | otherwise         = SAtom x
+
 
 
 -- | Apply a substitutor to an environment
@@ -254,10 +259,10 @@ unifyTypes' (l1 :->: r1) (l2 :->: r2)                = do
     return (s2 ++ s1)
 
 unifyTypes t1 t2 = let res =
---                        trace ("unifyTypes t1: " ++ pps t1 ++ " t2: " ++ pps t2) $
+                        trace ("unifyTypes t1: " ++ pps t1 ++ " t2: " ++ pps t2) $
                                 unifyTypes' t1 t2
                    in
---                        trace ("unifyTypes res: " ++ show res) $
+                        trace ("unifyTypes res: " ++ show res) $
                         res
 
 -- | Unify two types and returns just a substitution if possible,
