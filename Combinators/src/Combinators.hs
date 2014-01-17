@@ -24,6 +24,7 @@ module Combinators (
     ,module Combinators.CombGenerator
     ,module Combinators.Types
     ,module Combinators.LambdaTyped
+    ,module Combinators.CombinatorTyped
     ,module Combinators.Queries
 
 )
@@ -41,7 +42,7 @@ import Combinators.CombLambda
 import Combinators.CombGenerator
 import Combinators.Types
 import Combinators.LambdaTyped
-import Combinators.CombinatorTyped ()
+import Combinators.CombinatorTyped
 import Combinators.Queries
 
 

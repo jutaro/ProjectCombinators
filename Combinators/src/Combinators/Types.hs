@@ -31,7 +31,8 @@ module Combinators.Types (
     unifyTypes,
     unifyTypesR,
     typeVars,
-    parseType
+    parseType,
+    arityType
 ) where
 
 import Combinators.BinaryTree
@@ -233,8 +234,6 @@ substType s typ = foldr (\  (subs,repl) t -> substType' (subs,repl) t) typ s
     substType' (subs,repl) (SAtom x) | x == subs         = repl
                                      | otherwise         = SAtom x
 
-
-
 -- | Apply a substitutor to an environment
 substContext :: Substitution -> TypeContext v -> TypeContext v
 substContext subst env = map (\(n,t) -> (n,substType subst t)) env
@@ -248,33 +247,43 @@ typeVars (l :->: r)       = typeVars l ++ typeVars r
 -- and Nothing if it is not possible
 -- Equal type var names in both STypes means equal types in both formulars,
 -- if you dont want these use unifyTypesR
-unifyTypes, unifyTypes' :: SType -> SType -> Maybe Substitution
-unifyTypes' t1 t2       | t1 == t2                   = Just idSubstitution
-unifyTypes' (SAtom s) b | not (elem s (typeVars b))  = Just (updateSubst (s,b) idSubstitution)
-                        | otherwise                  = Nothing
-unifyTypes' (l :->: r) (SAtom s)                     = unifyTypes (SAtom s) (l :->: r)
-unifyTypes' (l1 :->: r1) (l2 :->: r2)                = do
-    s1 <- unifyTypes l1 l2
-    s2 <- unifyTypes (substType s1 r1) (substType s1 r2)
+unifyTypes, unifyTypes' :: Bool -> SType -> SType -> Maybe Substitution
+unifyTypes' _ t1 t2       | t1 == t2                   = Just idSubstitution
+unifyTypes' _ (SAtom s) b | not (elem s (typeVars b))  = Just (updateSubst (s,b) idSubstitution)
+                          | otherwise                  = Nothing
+unifyTypes' b(l :->: r) (SAtom s)                       = unifyTypes b (SAtom s) (l :->: r)
+unifyTypes' b (l1 :->: r1) (l2 :->: r2)                = do
+    s1 <- unifyTypes b l1 l2
+    s2 <- unifyTypes b (substType s1 r1) (substType s1 r2)
     return (s2 ++ s1)
 
-unifyTypes t1 t2 = let res =
-                        trace ("unifyTypes t1: " ++ pps t1 ++ " t2: " ++ pps t2) $
-                                unifyTypes' t1 t2
-                   in
-                        trace ("unifyTypes res: " ++ show res) $
-                        res
+unifyTypes b t1 t2 =
+    let res = if b
+                then trace ("unifyTypes t1: " ++ pps t1 ++ " t2: " ++ pps t2) $
+                        unifyTypes' b t1 t2
+                else unifyTypes' b t1 t2
+         in if b
+            then trace ("unifyTypes res: " ++ show res) $ res
+            else res
 
 -- | Unify two types and returns just a substitution if possible,
 -- and Nothing if it is not possible
 -- Equal type var names in both STypes gets renamed in the second formula before unification
-unifyTypesR :: SType -> SType -> (SType,Maybe Substitution)
-unifyTypesR type1 type2 =
+unifyTypesR :: Bool -> SType -> SType -> (SType,Maybe Substitution)
+unifyTypesR trace type1 type2 =
     let varNames = typeVars type1
         renamed = renameType type2 varNames
-    in (renamed, unifyTypes type1 renamed)
+    in (renamed, unifyTypes trace type1 renamed)
   where
     renameType (SAtom s) atomList | elem s atomList = renameType (SAtom (s++"'")) atomList
                                   | otherwise       = (SAtom s)
     renameType (l :->: r) atomList                   = renameType l atomList :->: renameType r atomList
 
+-----------------------------------------------------------------------------
+-- ** Properties
+
+arityType :: SType -> Int
+arityType t = arityType' t - 1
+  where
+    arityType' (SAtom _ )  = 1
+    arityType' (_l :->: r) = 1 + arityType' r

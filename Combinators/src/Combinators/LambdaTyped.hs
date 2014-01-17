@@ -31,6 +31,7 @@ import qualified Text.PrettyPrint as PP
 import Text.Parsec.String (Parser)
 import qualified Text.Parsec as PA
        (many1, (<|>), char, (<?>), try, option, spaces)
+import Debug.Trace (trace)
 
 -----------------------------------------------------------------------------
 -- ** Lambda terms with simple types
@@ -149,7 +150,7 @@ instance Typeable (LTerm VarInt Untyped) where
 
 -- TODO Checking correctness of reconstruction
 instance Typeable (LTerm VarString Untyped) where
-    typeof env term   = case reconstructType (length env,env) term of
+    typeof env term   = case reconstructType False (length env,env) term of
                                 Just (_,env,r,_) -> Just $ canonicalizeTypeContext (r,env)
                                 Nothing    -> Nothing
     typeof' term = let env = map (\(v,i) -> (v, SAtom (typeVarGen !! i))) $ zip (freeVars term) [0..]
@@ -161,7 +162,7 @@ instance Typeable (LTerm VarString Untyped) where
 
 -- | Convert an untyped term to a typed term if possible
 typeLambda :: TypeContext VarString -> LTerm VarString Untyped -> Maybe (LTerm VarString SType)
-typeLambda env term = case reconstructType (length env,env) term of
+typeLambda env term = case reconstructType False (length env,env) term of
                             Just (_,_,_,nt) -> Just $ nt
                             Nothing    -> Nothing
 
@@ -174,45 +175,49 @@ untypeLambda (LAbst _ _)          = error "LambdaType>>untypeLambda: Lonely LAbs
 
 
 -- | Infer a simple type for a lambda term
-reconstructType' :: (Int,TypeContext VarString) -> LTerm VarString Untyped ->
+reconstructType, reconstructType' :: Bool -> (Int,TypeContext VarString) -> LTerm VarString Untyped ->
                         Maybe (Int,TypeContext VarString, SType, LTerm VarString SType)
-reconstructType' (index,env) (LVar s) =
+
+
+reconstructType' _b (index,env) (LVar s) =
     case lookup s env of
         Nothing -> error ("LambdaTyped>>reconstructType: Unbound variableV: " ++ s ++ " env: " ++ show env)
         Just t  -> Just (index, env,t,LVar s)
-reconstructType' (index,env) (LAbst s _ :@: term) =
+reconstructType' b (index,env) (LAbst s _ :@: term) =
     let newType = SAtom $ typeVarGen !! index
-    in case reconstructType (index + 1,(s,newType):env) term of
+    in case reconstructType b (index + 1,(s,newType):env) term of
                 Nothing                  -> Nothing
                 Just (ind, env',nt,nterm) ->
                     case lookup s env' of
                         Nothing -> error ("LambdaTyped>>reconstructType: Unbound variableL: "
                                         ++ s ++ " env: " ++ show env')
                         Just t  -> Just (ind,tail env',t :->: nt, (LAbst s t :@: nterm))
-reconstructType' (index,env) (l :@: r) = do
-        (index',env',tr,ntr)   <- reconstructType (index,env) r
-        (index'',("_res",tr'):env'',tl,ntl) <- reconstructType (index',("_res",tr):env') l
+reconstructType' b (index,env) (l :@: r) = do
+        (index',env',tr,ntr)   <- reconstructType b (index,env) r
+        (index'',("_res",tr'):env'',tl,ntl) <- reconstructType b (index',("_res",tr):env') l
         case tl of
             SAtom _ ->  do
                 let newType = SAtom $ typeVarGen !! index''
-                subst <- unifyTypes tl (tr' :->: newType)
+                subst <- unifyTypes b tl (tr' :->: newType)
                 let newEnv   = substContext subst env''
                     newType' = substType subst newType
                 return (index''+1,newEnv,newType',ntl :@: ntr)
             (ll :->: lr) -> do
-                subst <- unifyTypes ll tr'
+                subst <- unifyTypes b ll tr'
                 let newEnv   = substContext subst env''
                     newType' = substType subst lr
                 return (index''+1,newEnv,newType',ntl :@: ntr)
 
-reconstructType' _ (LAbst _ _) = error "LambdaTyped>>inferSType: Lonely LAbst"
+reconstructType' _ _ (LAbst _ _) = error "LambdaTyped>>inferSType: Lonely LAbst"
 
-reconstructType :: (Int,TypeContext VarString) -> LTerm VarString Untyped ->
-                        Maybe (Int,TypeContext VarString, SType, LTerm VarString SType)
-reconstructType (index,env) t = let res =
---                                            trace ("reconstructType (index,env) " ++ show (index,env) ++ " t: " ++ pps t) $
-                                            reconstructType' (index,env) t
-                                in
---                                    trace ("reconstructType res: " ++ show res) $
-                                    res
+reconstructType traceIt (index,env) t =
+    let res = if traceIt
+                then
+                    trace ("reconstructType (index,env) " ++ show (index,env) ++ " t: " ++ pps t) $
+                        reconstructType' traceIt (index,env) t
+                else
+                    reconstructType' traceIt (index,env) t
+    in if traceIt
+            then trace ("reconstructType res: " ++ show res) $ res
+            else res
 

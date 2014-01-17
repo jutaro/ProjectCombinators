@@ -16,7 +16,7 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Combinators.CombinatorTyped (
-
+    reconstructTypeC
 ) where
 
 import Combinators.Types
@@ -33,7 +33,7 @@ import Debug.Trace (trace)
 -- ** Combinators
 
 instance Basis b => Typeable (CTerm b) where
-    typeof context term = case reconstructType context (length context) term of
+    typeof context term = case reconstructTypeC False context (length context) term of
                             Nothing -> Nothing
                             Just (ty,cont,_) -> Just (ty,cont)
     typeof' term =
@@ -45,35 +45,42 @@ instance Basis b => Typeable (CTerm b) where
                                                 Just p -> Just (fst p)
 
 
-reconstructType :: Basis b => TypeContext VarString -> Int -> CTerm b -> Maybe (SType, TypeContext VarString, Int)
-reconstructType cont ind (Const c) =
+reconstructTypeC, reconstructType' :: Basis b => Bool -> TypeContext VarString -> Int -> CTerm b -> Maybe (SType, TypeContext VarString, Int)
+reconstructType' _ cont ind (Const c) =
     let (newInd, newType) = primitiveType ind c
     in Just (newType,cont,newInd)
-reconstructType cont ind (Var s)   =
+reconstructType' _ cont ind (Var s)   =
     case lookup s cont of
         Nothing -> let newType = SAtom (typeVarGen !! ind)
                   in Just (newType,(s,newType):cont,ind + 1)
         Just nt -> Just (nt,cont,ind)
-reconstructType cont ind (l :@ r)  = trace ("reconstructType called l: " ++ pps l ++ "\nr: " ++ pps r
-                                                ++ " cont: " ++ show cont) $ do
-    (l',cont',ind') <- reconstructType cont (ind+1) l
-    (r',("_res",l''):cont'',ind'') <- reconstructType (("_res",l'):cont') ind' r
+reconstructType' b cont ind (l :@ r)  = do
+    (l',cont',ind') <- reconstructTypeC b cont (ind+1) l
+    (r',("_res",l''):cont'',ind'') <- reconstructTypeC b (("_res",l'):cont') ind' r
     case l'' of
         SAtom _ ->  do
             let newType = SAtom $ typeVarGen !! ind
-            subst <- unifyTypes l'' (r' :->: newType)
+            subst <- unifyTypes b l'' (r' :->: newType)
             let newCont = substContext subst cont''
                 newType' = substType subst newType
-            trace ("reconstructType1 l: " ++ pps l'' ++ "\nr: " ++ pps r'
-                ++ "\nsubst " ++ show subst ++ "\nnewType' " ++ pps newType') $
-                return (newType',newCont,ind'')
+            return (newType',newCont,ind'')
         (ll :->: lr) -> do
-            subst <- unifyTypes ll r'
+            subst <- unifyTypes b ll r'
             let newCont  = substContext subst cont''
                 newType' = substType subst lr
-            trace ("reconstructType2 l: " ++ pps l'' ++ " r: " ++ pps r'
-                    ++ "\nsubst " ++ show subst ++ "\nnewType' " ++ pps newType') $
-                return (newType',newCont,ind'')
+            return (newType',newCont,ind'')
+
+reconstructTypeC traceIt cont ind t =
+    let res = if traceIt
+                then
+                    trace ("reconstructType cont: " ++ show cont ++ " t: " ++ pps t) $
+                        reconstructType' traceIt cont ind t
+                else
+                    reconstructType' traceIt cont ind t
+    in if traceIt
+            then trace ("reconstructType res: " ++ show res) $ res
+            else res
+
 
 primitiveType :: Int -> Combinator c -> (Int,SType)
 primitiveType ind comb = let ((ind',_),t) = replaceVars (ind,[]) (combType comb)
