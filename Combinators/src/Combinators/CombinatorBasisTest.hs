@@ -18,20 +18,25 @@ import Combinators.CombinatorBasis
 import Combinators.Combinator
 
 import Test.HUnit.Base (Assertion)
-import Test.HUnit ((@=?))
+import Test.HUnit (assertBool)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.Framework (Test)
 import Combinators.BinaryTree (PP(..))
+import Combinators.Reduction
+       (instrumentedContext, NormalForm(..), reduceIt)
 
 
 testWK :: Assertion
-testWK  = (pparse :: String -> CTerm IKBCW) "x" @=? (normalOrderReduction . pparse) "W K x"
+testWK  = assertBool "testWK" $ (pparse :: String -> CTerm IKBCW) "x" ==
+            (reduceIt instrumentedContext NormalForm . pparse) "W K x"
 
 testS :: Assertion
-testS  = (pparse :: String -> CTerm IKBCW) "x z (y z)" @=? (normalOrderReduction . pparse) "B (B (B W) C) (B B) x y z"
+testS  = assertBool "testS" $ (pparse :: String -> CTerm IKBCW) "x z (y z)" ==
+            (reduceIt instrumentedContext NormalForm . pparse) "B (B (B W) C) (B B) x y z"
 
 testS2 :: Assertion
-testS2  = (pparse :: String -> CTerm IKBCW) "x z (y z)" @=? (normalOrderReduction . pparse) "B (B W) (B B C) x y z"
+testS2  = assertBool "testS2" $ (pparse :: String -> CTerm IKBCW) "x z (y z)" ==
+            (reduceIt instrumentedContext NormalForm . pparse) "B (B W) (B B C) x y z"
 
 
 testBasis :: [Test]

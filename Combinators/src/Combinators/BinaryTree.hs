@@ -75,16 +75,16 @@ preorderLeaves t = case decompose t of
                     Just (l,r) -> preorderLeaves l ++ preorderLeaves r
                     Nothing -> [t]
 
-spine :: BinaryTree t => t -> [t]
-spine = reverse . spine'
+leftSpine :: BinaryTree t => t -> [t]
+leftSpine = reverse . spine'
   where
     spine' t = case decompose t of
                 Just (l,r) -> (r : spine' l)
                 Nothing -> [t]
 
-spineLength :: BinaryTree t => t -> Int
-spineLength t = case decompose t of
-                 Just (l,_r) ->  1 + spineLength l
+leftSpineLength :: BinaryTree t => t -> Int
+leftSpineLength t = case decompose t of
+                 Just (l,_r) ->  1 + leftSpineLength l
                  _ -> 1
 
 nodeSize :: BinaryTree t => t -> Int
@@ -198,7 +198,7 @@ zipperGetPath :: BinaryTree t => BTZipper t -> [Int]
 zipperGetPath z = reverse (zipperGetPath' [] (reverse (zipAnchestors z)))
   where
     zipperGetPath' accu [] = accu
-    zipperGetPath' accu (Left term: rest)   = zipperGetPath' (spineLength term:accu) rest
+    zipperGetPath' accu (Left term: rest)   = zipperGetPath' (leftSpineLength term:accu) rest
     zipperGetPath' accu (Right _term: [])   = 0:accu
     zipperGetPath' accu (Right _term: rest) = zipperGetPath' accu rest
 

@@ -29,10 +29,10 @@ module Combinators.Lambda (
     freeVars,
     boundVars,
     isClosed,
+    arityLambda,
 -----------------------------------------------------------------------------
 -- ** Convenience
     reduceLambda,
-    canonicalizeLambda,
 -----------------------------------------------------------------------------
 -- ** De Bruijn indices
     toLambdaB,
@@ -52,8 +52,6 @@ import Data.Maybe (fromJust)
 import qualified Data.List as List
        (lookup, elemIndex, elem, intersect, nub)
 import Control.Monad (liftM)
-import Debug.Trace (trace)
---import Debug.Trace (trace)
 
 -----------------------------------------------------------------------------
 -- * Lambda calculus implementation
@@ -84,26 +82,37 @@ data LTerm v t where
 
 deriving instance Show t => Show (LTerm v t)
 
---instance PP (LTerm v t) => Show (LTerm v t) where
---    show =  pps
-
--- | Names of local variables (abst) are not important for equality
-instance Eq t => Eq (LTerm VarInt t) where
-    a == b = canonicalizeLambdaB a =:= canonicalizeLambdaB b
-
-(=:=) :: LTerm VarInt t -> LTerm VarInt t -> Bool
-LVar vl      =:= LVar vr        = vl == vr
-LAbst _sl tl =:= LAbst _sr tr   = tl == tr
-(ll :@: lr)  =:= (rl :@: rr)    = ll =:= rl && lr =:= rr
-_ =:= _                         = False
-
-instance Eq t => Eq (LTerm VarString t) where
+instance Eq (LTerm VarString t) where
     a == b = toLambdaB a == toLambdaB b
-
-deriving instance Ord t => Ord (LTerm VarInt t)
 
 instance Ord t => Ord (LTerm VarString t) where
     a `compare` b = toLambdaB a `compare` toLambdaB b
+
+instance Eq (LTerm VarInt t) where
+    a == b = canonicalizeLambdaB a =:= canonicalizeLambdaB b
+
+(=:=) :: Variable v => LTerm v t -> LTerm v t -> Bool
+LVar x1 =:= LVar y1         = x1 == y1
+LAbst _x1 x2 =:= LAbst _y1 y2 = x2 == y2 -- don't care about names
+(:@:) x1 x2 =:= (:@:) y1 y2 = x1 =:= y1 && x2 =:= y2
+_ =:= _                     = False
+
+instance Ord t => Ord (LTerm VarInt t) where
+    compare a b = canonicalizeLambdaB a `compare'` canonicalizeLambdaB b
+
+compare' :: Ord t => LTerm v t -> LTerm v t -> Ordering
+compare' a b = check a b
+  where check (LVar x1) (LVar y1) = compare x1 y1 `_then` EQ
+        check (LAbst _x1 x2) (LAbst _y1 y2)
+          = compare x2 y2 `_then` EQ -- don't care about names
+        check ((:@:) x1 x2) ((:@:) y1 y2)
+          = compare' x1 y1 `_then` compare' x2 y2 `_then` EQ
+        check x y = compare (tag x) (tag y)
+        _then EQ x = x
+        _then x _ = x
+        tag (LVar{}) = 0 :: Int
+        tag (LAbst{}) = 1 :: Int
+        tag ((:@:){}) = 2 :: Int
 
 instance Variable v => BinaryTree (LTerm v t) where
     decompose (tl :@: tr) = Just (tl,tr)
@@ -113,12 +122,21 @@ instance Variable v => BinaryTree (LTerm v t) where
 -- Bind application to the left.
 infixl 5 :@:
 
-instance Variable v => Term (LTerm v t) where
+instance Ord t => Term (LTerm VarInt t) where
     isTerminal (LVar _)         = True
     isTerminal (LAbst _ _)      = True
     isTerminal (LVar _ :@: _r)  = True
     isTerminal (LAbst _ _ :@: _r) = True
     isTerminal _                = False
+    canonicalize                = canonicalizeLambdaB
+
+instance Ord t => Term (LTerm VarString t) where
+    isTerminal (LVar _)         = True
+    isTerminal (LAbst _ _)      = True
+    isTerminal (LVar _ :@: _r)  = True
+    isTerminal (LAbst _ _ :@: _r) = True
+    isTerminal _                = False
+    canonicalize                = canonicalizeLambda
 
 instance TermString (LTerm VarString t) where
     occurs v (LVar n)                      = v == n
@@ -257,6 +275,13 @@ canonicalizeLambdaB t = (\(_,_,t) -> t) $ canonicalizeLambdaB' 0 0 [] t
     canonicalizeLambdaB' _ _ _ (LAbst n _) =
         error $ "Lambda>>toLambdaB': Lonely Abstraction " ++ show n
 
+arityLambda :: LTerm v t -> Int
+arityLambda te@(LAbst _ _ :@: _t) = arityLambda' te
+  where
+    arityLambda' (LAbst _ _ :@: t) = 1 +  arityLambda' t
+    arityLambda' _ = 0
+arityLambda (l :@: _r) = arityLambda l - 1
+arityLambda _ = 0
 
 -----------------------------------------------------------------------------n
 -- ** Substitution
@@ -365,12 +390,18 @@ fromLambdaB = fromLambdaB' []
                                                             else LVar (nameGenFV !! (ind - length env))
     fromLambdaB' env (LAbst str ty :@: t) =
         if elem str env
-            then
-                let newName = str ++ "'"
-                in fromLambdaB' env (LAbst newName ty :@: t)
+            then let newName = findNewName str env (0:: Int)
+                 in LAbst newName ty :@: fromLambdaB' (newName:env) t
             else LAbst str ty :@: fromLambdaB' (str:env) t
+      where
+        findNewName str env n =
+            if elem (str ++ show n) env
+                then findNewName str env (n+1)
+                else (str ++ show n)
     fromLambdaB' env (lt :@: rt)       = fromLambdaB' env lt :@: fromLambdaB' env rt
     fromLambdaB' _env (LAbst n _)        = error $ "Lambda>>toLambdaB': Lonely Abstraction " ++ show n
+
+
 
 (!!!)                :: [a] -> Int -> Maybe a
 _      !!! n | n < 0 =  Nothing

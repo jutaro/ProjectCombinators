@@ -17,6 +17,7 @@ module Combinators.CombLambda where
 import Combinators.Lambda
 import Combinators.Combinator
 import Combinators.Variable
+import Combinators.Reduction
 
 -----------------------------------------------------------------------------
 -- * Comb Lambda - back and forth between combinatory logic and lamnbda calculus
@@ -24,7 +25,7 @@ import Combinators.Variable
 
 -- | Converts a term of combinatory logic into an untyped lambda term
 combToLambda :: CTerm basis -> LTerm VarString Untyped
-combToLambda = canonicalizeLambda . combToLambda'
+combToLambda = canonicalize . combToLambda'
 
 combToLambda' :: CTerm basis -> LTerm VarString Untyped
 combToLambda' (Var v)      = LVar v

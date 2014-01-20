@@ -40,9 +40,9 @@ main = defaultMainWith myConfig (return ()) [
           bench "pprint2" $ whnf pps (withStrategy rseq (parseIKS t2)),
           bench "pprint3" $ whnf pps (withStrategy rseq (parseIKS t3)),
 
-          bench "red1" $ whnf normalOrderReduction (withStrategy rseq (parseIKS t1)),
-          bench "red2" $ whnf normalOrderReduction (withStrategy rseq (parseIKS t2)),
-          bench "red3" $ whnf normalOrderReduction (withStrategy rseq (parseIKS t1))
+          bench "red1" $ whnf (reduceIt instrumentedContext NormalForm) (withStrategy rseq (parseIKS t1)),
+          bench "red2" $ whnf (reduceIt instrumentedContext NormalForm) (withStrategy rseq (parseIKS t2)),
+          bench "red3" $ whnf (reduceIt instrumentedContext NormalForm) (withStrategy rseq (parseIKS t1))
         ]
 
 t1, t2, t3 :: String

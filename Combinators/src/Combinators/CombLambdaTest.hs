@@ -22,16 +22,18 @@ import Combinators.BinaryTree (PP(..))
 import Combinators.Combinator (KS, CTerm)
 import Combinators.CombinatorTest ()
 import Combinators.CombLambda (BracketAbstract(..), combToLambda)
-import Combinators.Reduction (reduceS)
-import Combinators.Lambda (canonicalizeLambda, LTerm)
+import Combinators.Reduction (Term(..), reduceS)
+import Combinators.Lambda (LTerm)
 import Combinators.LambdaTest ()
 import Combinators.Variable (VarString)
 import Combinators.Types (Untyped(..))
 
-import Debug.Trace (trace)
 import Test.Framework (Test)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Combinators.CombinatorBasis (IKBCW, IKS)
+
+trace :: a -> b -> b
+trace _a b = b
 
 testCombLambda :: [Test]
 testCombLambda = [-- testProperty "prop_combToLambda" prop_combToLambda
@@ -44,11 +46,11 @@ testCombLambda = [-- testProperty "prop_combToLambda" prop_combToLambda
 prop_LambdaToCombKS :: LTerm VarString Untyped -> Bool
 prop_LambdaToCombKS term = case prop of
                                 Nothing -> trace ("failed reduction term: "  ++
-                                                pps (canonicalizeLambda term)) $ True
+                                                pps (canonicalize term)) $ True
                                 Just b -> b
   where
     prop = do
-        let term' = canonicalizeLambda term
+        let term' = canonicalize term
         lr <- reduceS term'
         let ct :: CTerm KS =  bracketAbstract lr
         cr <- reduceS ct
@@ -58,24 +60,24 @@ prop_LambdaToCombKS term = case prop of
             then (trace' "prop_LambdaToCombKS" lr cr resRed) $ return True
             else (trace' "prop_LambdaToCombKS" lr cr resRed) $ return False
 
-trace' :: forall a t t1 t2.
+trace' :: forall a t t1 t2. (Ord t, Ord t2) =>
         (PP (LTerm VarString t), PP t1, PP (LTerm VarString t2)) =>
         [Char] -> LTerm VarString t -> t1 -> LTerm VarString t2 -> a -> a
 
 trace' name lr cr resRed a =
     trace
-        (name ++ "\nin:\n" ++ pps (canonicalizeLambda lr) ++ "\ncon:\n" ++
+        (name ++ "\nin:\n" ++ pps (canonicalize lr) ++ "\ncon:\n" ++
          pps cr ++ "\nres:\n" ++
-         pps (canonicalizeLambda resRed)) a
+         pps (canonicalize resRed)) a
 
 prop_LambdaToCombIKS :: LTerm VarString Untyped -> Bool
 prop_LambdaToCombIKS term = case prop of
                                 Nothing -> trace ("failed reduction term: "  ++
-                                                pps (canonicalizeLambda term)) $ True
+                                                pps (canonicalize term)) $ True
                                 Just b -> b
   where
     prop = do
-        let term' = canonicalizeLambda term
+        let term' = canonicalize term
         lr <- reduceS term'
         let ct :: CTerm IKS =  bracketAbstract lr
         cr <- reduceS ct
@@ -88,11 +90,11 @@ prop_LambdaToCombIKS term = case prop of
 prop_LambdaToCombIKBCW :: LTerm VarString Untyped -> Bool
 prop_LambdaToCombIKBCW term = case prop of
                                 Nothing -> trace ("failed reduction term: "  ++
-                                                pps (canonicalizeLambda term)) $ True
+                                                pps (canonicalize term)) $ True
                                 Just b -> b
   where
     prop = do
-        let term' = canonicalizeLambda term
+        let term' = canonicalize term
         lr <- reduceS term'
         let ct :: CTerm IKBCW =  bracketAbstract lr
         cr <- reduceS ct

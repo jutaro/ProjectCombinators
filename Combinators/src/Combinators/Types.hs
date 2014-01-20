@@ -44,7 +44,7 @@ import Text.PrettyPrint
        (($$), (<+>), braces, empty, Doc, text, (<>), parens, brackets)
 import Data.Maybe (isJust)
 import Debug.Trace (trace)
--- Jimport Debug.Trace (trace)
+import Combinators.Reduction (Term(..))
 
 -----------------------------------------------------------------------------
 -- * Simple Types
@@ -68,6 +68,15 @@ instance BinaryTree SType where
     decompose (a :->: b) = Just (a,b)
     decompose (SAtom _) = Nothing
     a @@ b              = a :->: b
+
+instance Term SType where
+    isTerminal (SAtom _)        = True
+    isTerminal _                = False
+    canonicalize                = canonicalizeType
+
+instance PP SType where
+    pp = pp' False
+    pparser = parseType []
 
 -----------------------------------------------------------------------------
 -- ** Making types optional
@@ -111,16 +120,6 @@ typeVarGen = [ c: n | n <- ("" : map show [(1:: Int)..]), c <- "abcdefg"]
 canonicalizeType :: SType -> SType
 canonicalizeType t = (\(_,_,r) -> r) $ canonicalizeType' 0 [] t
 
--- | Name type variables in a type with a context in a canonical way
-canonicalizeTypeContext :: (SType,TypeContext a) -> (SType,TypeContext a)
-canonicalizeTypeContext (t,enviro) =
-    let (index,env,res) = canonicalizeType' 0 [] t
-        (_,_,res'') = foldr (\(k,t) (i,env,newEnv) ->
-                                let (index',env',res') = canonicalizeType' i env t
-                                in (index',env',(k,res') : newEnv))
-                            (index,env,[]) enviro
-    in (res,res'')
-
 canonicalizeType' :: Int -> [(String,Int)] -> SType -> (Int, [(String,Int)], SType)
 canonicalizeType' i env (SAtom s) =
     case lookup s env of
@@ -131,12 +130,21 @@ canonicalizeType' i env (l :->: r) =
         (i'',env'',r') = canonicalizeType' i' env' r
     in (i'',env'',l' :->: r')
 
+-- | Name type variables in a type with a context in a canonical way
+canonicalizeTypeContext :: (SType,TypeContext a) -> (SType,TypeContext a)
+canonicalizeTypeContext (t,enviro) =
+    let (index,env,res) = canonicalizeType' 0 [] t
+        (_,_,res'') = foldr (\(k,t) (i,env,newEnv) ->
+                                let (index',env',res') = canonicalizeType' i env t
+                                in (index',env',(k,res') : newEnv))
+                            (index,env,[]) enviro
+    in (res,res'')
+
+
 -----------------------------------------------------------------------------
 -- ** Printing and parsing
 
-instance PP SType where
-    pp = pp' False
-    pparser = parseType []
+
 
 pp' :: Bool -> SType -> PP.Doc
 pp' True (a :->: b)   = PP.parens (pp' False (a :->: b))

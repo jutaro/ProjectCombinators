@@ -20,6 +20,7 @@ import Test.HUnit.Base (Assertion)
 import Test.HUnit ((@=?), assertBool)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.Framework (Test)
+import Data.Maybe (fromJust)
 
 parseIKS :: String -> CTerm IKS
 parseIKS = pparse
@@ -27,13 +28,13 @@ parseIKS = pparse
 -- example
 testWeakEqual1 :: Assertion
 testWeakEqual1 =  assertBool "testWeakEqual1"
-    (isWeakEqual (parseIKS "S K (K x y) (I v)") (parseIKS "z"))
+    (fromJust (isWeakEqual (parseIKS "S K (K x y) (I v)") (parseIKS "z")))
 testWeakEqual2 :: Assertion
 testWeakEqual2 =  assertBool "testWeakEqual2"
-    (isWeakEqual (parseIKS "S(S(K S)(S(K K)K))(K(S(K K))) x y") (parseIKS "K z v"))
+    (fromJust (isWeakEqual (parseIKS "S(S(K S)(S(K K)K))(K(S(K K))) x y") (parseIKS "K z v")))
 testWeakEqual3 :: Assertion
 testWeakEqual3 =  assertBool "testWeakEqual3"
-    (not (isWeakEqual (parseIKS "S(S(K S)(S(K K)K))(K(S(K K)))") (parseIKS "K")))
+    (not (fromJust (isWeakEqual (parseIKS "S(S(K S)(S(K K)K))(K(S(K K)))") (parseIKS "K"))))
 
 -- example
 testArity1 :: Assertion
@@ -50,20 +51,20 @@ testArity3 =
 
 
 -- example
---testIdentity1 :: Assertion
---testIdentity1 =   assertBool "testIdentity1"
---    $ isIdentity (parseIKS "I")
---testIdentity2 :: Assertion
---testIdentity2 =   assertBool "testIdentity2"
---    $ isIdentity (parseIKS "I (S K K)")
---testIdentity3 :: Assertion
---testIdentity3 =   assertBool "testIdentity3"
---    $ isIdentity (parseIKS "S (K S) K I")
---testIdentity4 :: Assertion
---testIdentity4 =   assertBool "testIdentity4"
---    $ not (isIdentity (parseIKS "S (K K) K I"))
-
 {-
+testIdentity1 :: Assertion
+testIdentity1 =   assertBool "testIdentity1"
+    $ fromJust $ isIdentity  (parseIKS "I")
+testIdentity2 :: Assertion
+testIdentity2 =   assertBool "testIdentity2"
+    $ fromJust $ isIdentity (parseIKS "I (S K K)")
+testIdentity3 :: Assertion
+testIdentity3 =   assertBool "testIdentity3"
+    $ fromJust $ isIdentity (parseIKS "S (K S) K I")
+testIdentity4 :: Assertion
+testIdentity4 =   assertBool "testIdentity4"
+    $ not (fromJust $ isIdentity (parseIKS "S (K K) K I"))
+
 --example
 testAssociator1 :: Assertion
 testAssociator1 =   assertBool "testAssociator1"

@@ -36,10 +36,6 @@ module Combinators.Combinator (
     Redex,
     redex,
     isRedex,
------------------------------------------------------------------------------
--- ** Convenience
-    normalOrderReduction,
---    strReduction,
 
  ) where
 
@@ -48,14 +44,12 @@ import Combinators.BinaryTree
 import Combinators.Reduction
 import Combinators.Types
 
-import Data.List (nub)
 import Data.Maybe (fromJust, isJust)
 import Control.Monad (liftM)
 
 import Text.Parsec.String (Parser)
 import qualified Text.PrettyPrint as PP
 import qualified Text.Parsec as PA
--- import Debug.Trace (trace)
 
 -- (inspired by Katalin Bimbo's book).
 
@@ -80,9 +74,9 @@ data CTerm basis where
     Var   :: ! VarString -> CTerm basis
     (:@)  :: ! (CTerm basis) -> ! (CTerm basis) -> CTerm basis
 
+deriving instance Show (CTerm basis)
 deriving instance Eq (CTerm basis)
 deriving instance Ord (CTerm basis)
-deriving instance Show (CTerm basis)
 
 instance Basis basis => BinaryTree (CTerm basis) where
     decompose (tl :@ tr) = Just (tl,tr)
@@ -93,6 +87,7 @@ instance Basis basis => Term (CTerm basis) where
     isTerminal (Var _)          = True
     isTerminal (Const _)        = True
     isTerminal _                = False
+    canonicalize                = canonicalizeCTerm
 
 instance Basis basis => TermString (CTerm basis) where
     occurs v (Var n)                      = v == n
@@ -135,7 +130,6 @@ data Combinator basis where
 
 deriving instance Eq (Combinator basis)
 deriving instance Ord (Combinator basis)
-
 instance Show (Combinator basis) where
     show = combName
 
@@ -143,6 +137,21 @@ instance Show (Combinator basis) where
 -- of the variables in its axiom
 primArity :: Combinator basis -> Int
 primArity = length . combVars
+
+-- | Name variables in a term in a canonical way
+canonicalizeCTerm :: Basis b => CTerm b  -> CTerm b
+canonicalizeCTerm t = (\(_,_,r) -> r) $ canonicalizeCTerm' 0 [] t
+
+canonicalizeCTerm' :: Basis b => Int -> [(String,Int)] -> CTerm b -> (Int, [(String,Int)], CTerm b)
+canonicalizeCTerm' i env (Var s) =
+    case lookup s env of
+        Just ind ->  (i,env, Var (nameGen !! ind))
+        Nothing -> (i+1,(s,i):env,Var (nameGen !! i))
+canonicalizeCTerm' i env (Const c) = (i,env,Const c)
+canonicalizeCTerm' i env (l :@ r) =
+    let (i',env',l')   = canonicalizeCTerm' i env l
+        (i'',env'',r') = canonicalizeCTerm' i' env' r
+    in (i'',env'',l' :@ r')
 
 -----------------------------------------------------------------------------
 -- ** Basis
@@ -248,7 +257,7 @@ subterm _x _y                 = False
 allSubterms :: Basis basis => CTerm basis -> [CTerm basis]
 allSubterms (Var a1) = [Var a1]
 allSubterms (Const a1) = [Const a1]
-allSubterms (a1 :@ a2) = (a1 :@ a2) : nub (allSubterms a1 ++ allSubterms a2)
+allSubterms (a1 :@ a2) = (a1 :@ a2) : (allSubterms a1 ++ allSubterms a2)
 
 -----------------------------------------------------------------------------
 -- ** Substitution
@@ -336,8 +345,8 @@ applyCombinator (zipper,(comb,args)) =
 -- | Normal order reduction for a term.
 --
 --  This is not guaranteed to terminate.
-normalOrderReduction :: Basis basis => CTerm basis -> CTerm basis
-normalOrderReduction = reduceIt instrumentedContext NormalForm
+--normalOrderReduction :: Basis basis => CTerm basis -> CTerm basis
+--normalOrderReduction = reduceIt instrumentedContext NormalForm
 
 --
 ---- | Takes a string, parses it, applies normalOrderReduction and prints the result.

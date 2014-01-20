@@ -189,9 +189,10 @@ instrumentedContext = state (\ s -> (Nothing,s))
 -- ** Term, and abstract Reduction with convenience functions
 -----------------------------------------------------------------------------
 
-class BinaryTree t => Term t where
+class (BinaryTree t, Ord t, Eq t) => Term t where
     isTerminal :: t -> Bool
     -- ^ This information is used for reduction
+    canonicalize :: t -> t
 
 class BinaryTree t => TermString t where
     occurs :: VarString -> t -> Bool
