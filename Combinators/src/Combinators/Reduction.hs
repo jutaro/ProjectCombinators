@@ -33,12 +33,11 @@ module Combinators.Reduction (
     Term(..),
     TermString(..),
     Reduction (..),
-    reduceCont,
     reduce,
     reduceS,
-    reduceIt,
-    reduceOnceCont,
-    reduceOnce
+    reduceSForce,
+    reduceOnce,
+    reduceOnceS
 ) where
 
 import Combinators.BinaryTree
@@ -48,8 +47,6 @@ import Control.Monad.Trans.State
 import qualified Data.Set as Set (member, insert, empty, Set)
 import Combinators.Variable (VarString)
 
-trace :: a -> b -> b
-trace _x s = s
 
 -----------------------------------------------------------------------------
 -- ** Abstract Reduction, Reduction strategies and reduction contexts
@@ -117,7 +114,7 @@ instance Strategy HeadNormalForm where
 -- ** Reduction Context
 
 class (Monad c, BinaryTree t, PP t) => ReductionContext c t where
-    runContext :: c (Maybe t) -> Maybe t
+    runContext :: Int -> c (Maybe t) -> (Maybe t,ShowS,Int,[t])
     startReduction :: () => (BTZipper t) -> c (BTZipper t)
     stepReduction :: (BinaryTree t, PP t) => (BTZipper t) -> c (Maybe (BTZipper t))
     stopReduction :: (BinaryTree t, PP t) => (BTZipper t) -> c (BTZipper t)
@@ -129,7 +126,7 @@ class (Monad c, BinaryTree t, PP t) => ReductionContext c t where
 type NullContext = Identity
 
 instance (PP t, BinaryTree t) => ReductionContext Identity t where
-    runContext (Identity a) = a
+    runContext _ (Identity a) = (a,id,0,[])
     startReduction tz = return tz
     stepReduction tz = return (Just tz)
     stopReduction tz = return tz
@@ -137,53 +134,58 @@ instance (PP t, BinaryTree t) => ReductionContext Identity t where
 nullContext :: Identity (Maybe a)
 nullContext = Identity Nothing
 
-maxcount :: Int
-maxcount = 1000
-
 -----------------------------------------------------------------------------
 -- *** Instrumented Context
 
 instance (PP t, BinaryTree t, Ord t) => ReductionContext (InstrumentedContext t) t  where
-    runContext tracing =
-        let (a, (s,_i,_l)) = runState tracing (id,0,Set.empty)
-        in  trace (take 3000 (s "")) a
+    runContext maxc tracing =
+        let (a, (s,_maxc,i,_set,li)) = runState tracing (id,maxc,0,Set.empty,[])
+        in  (a,s,i,li)
     startReduction tz = do
         let t = unzipper tz
-        modify (\(log,count,l) -> (log . showString "\nstart: " . ppsh t, count,Set.insert t l))
+        modify (\(log,max,count,set,li) ->
+                    (log, max, count,Set.insert t set,t:li))
         return tz
     stepReduction tz =  do
         let t = unzipper tz
-        (_,count,l) <- get
-        if Set.member t l
+        (_,maxc,count,set,_li) <- get
+        if Set.member t set
             then do
-                modify (\(log,count,l) ->
+                modify (\(log,maxc,count,set,li) ->
                     (log . showString "\nCycle detected: " . ppsh t,
+                    maxc,
                     count + 1,
-                    l))
+                    set,
+                    li))
                 return Nothing
-            else if count + 1 > maxcount
+            else if count + 1 > maxc
                 then do
-                    modify (\(log,count,l) ->
+                    modify (\(log,maxc,count,set,li) ->
                         (log . showString "\nMax reductions reached: " . shows count,
+                        maxc,
                         count + 1,
-                        l))
+                        set,
+                        li))
                     return Nothing
                 else do
-                    modify (\(log,count,l) ->
-                        (log . showString "\nstep" . shows (count + 1) . showString ": " . ppsh t,
+                    modify (\(log,maxc,count,set,li) -> (
+                        log, -- . showString "\nstep" . shows (count + 1) . showString ": " . ppsh t,
+                        maxc,
                         count+1,
-                        Set.insert t l
+                        Set.insert t set,
+                        t:li
                         ))
                     return (Just tz)
     stopReduction tz = do
         return tz
 
-type InstrumentedContext t = State (ShowS,Int,Set.Set t)
+type InstrumentedContext t = State (ShowS,Int,Int,Set.Set t,[t])
 
 instrumentedContext :: InstrumentedContext t (Maybe t)
 instrumentedContext = state (\ s -> (Nothing,s))
 
-
+maxcount :: Int
+maxcount = 150
 
 -----------------------------------------------------------------------------
 -- ** Term, and abstract Reduction with convenience functions
@@ -207,35 +209,38 @@ class (ReductionContext c t, BinaryTree t , PP t, Strategy s) => Reduction t s c
     --   if no reduction was possible
 
 
---  This is not guaranteed to terminate.
-reduceCont :: Reduction t s c => s -> t -> c (Maybe t)
-reduceCont s t = do
-    r <- (reduce' s)  (zipper t)
-    case r of
-        Just t' -> return $ Just (unzipper t')
-        Nothing -> return $ Nothing
 
 --  This is not guaranteed to terminate.
-reduce :: forall c t s. (ReductionContext c t, Reduction t s c) => c (Maybe t) -> s -> t -> Maybe t
-reduce _c s t =  (runContext :: c (Maybe t) -> Maybe t) (reduceCont s t)
+reduce :: forall c t s. (ReductionContext c t, Reduction t s c) => c (Maybe t) -> s -> Int -> t ->
+                            (Maybe t,ShowS,Int,[t])
+reduce _c s n t =  (runContext :: Int -> c (Maybe t) ->  (Maybe t,ShowS,Int,[t])) n (reduceCont s t)
+  where
+    reduceCont s t = do
+        r <- (reduce' s)  (zipper t)
+        case r of
+            Just t' -> return $ Just (unzipper t')
+            Nothing -> return $ Nothing
 
 reduceS :: (Reduction t NormalForm (InstrumentedContext t), Term t) =>  t -> Maybe t
-reduceS = reduce instrumentedContext NormalForm
+reduceS = (\(a,_,_,_) -> a) . reduce instrumentedContext NormalForm maxcount
 
---  This is not guaranteed to terminate.
-reduceIt :: (ReductionContext c t, Reduction t s c) => c (Maybe t) -> s -> t -> t
-reduceIt c s t = case reduce c s t of
-                        Just t' -> t'
-                        Nothing -> error "Term>>reduceIt: Nontermination detected?"
+reduceSForce :: (Reduction t NormalForm (InstrumentedContext t), Term t) => t -> t
+reduceSForce t = case reduce instrumentedContext NormalForm maxcount t of
+                        (Just t',_,_,_) -> t'
+                        (Nothing,s,_,_) -> error ("Term>>reduceIt: " ++  (s ""))
 
 --
-reduceOnceCont ::  Reduction t s c => s -> t -> c (Maybe t)
-reduceOnceCont s t = do
-    r <- reduceOnce' s (zipper t)
-    case r of
-        Just t' -> return (Just (unzipper t'))
-        Nothing -> return Nothing
 
 --  This is not guaranteed to terminate.
-reduceOnce :: forall t s c . Reduction t s c =>  c (Maybe t) -> s -> t -> Maybe t
-reduceOnce _c strategy t = (runContext :: c (Maybe t) -> (Maybe t)) (reduceOnceCont strategy t)
+reduceOnce :: forall t s c . Reduction t s c =>  c (Maybe t) -> s -> t -> (Maybe t,ShowS,Int,[t])
+reduceOnce _c strategy t = (runContext :: Int -> c (Maybe t) ->  (Maybe t,ShowS,Int,[t])) maxcount
+                                (reduceOnceCont strategy t)
+  where
+    reduceOnceCont s t = do
+        r <- reduceOnce' s (zipper t)
+        case r of
+            Just t' -> return (Just (unzipper t'))
+            Nothing -> return Nothing
+
+reduceOnceS :: (Reduction t NormalForm (InstrumentedContext t), Term t) =>  t -> Maybe t
+reduceOnceS = (\(a,_,_,_) -> a) . reduceOnce instrumentedContext NormalForm

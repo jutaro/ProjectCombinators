@@ -21,10 +21,11 @@ module Combinators.LambdaTyped (
     reconstructType
 ) where
 
-import Combinators.BinaryTree (PP(..), PP)
+import Combinators.BinaryTree (rightSpine, PP(..), PP)
 import Combinators.Lambda
 import Combinators.Types
-import Combinators.Variable (VarInt, varParse, varPp, VarString)
+import Combinators.Variable
+       (nameGen, VarInt, varParse, varPp, VarString)
 
 import qualified Text.PrettyPrint as PP
        ((<+>), fsep, fcat, parens, text, Doc)
@@ -221,3 +222,19 @@ reconstructType traceIt (index,env) t =
             then trace ("reconstructType res: " ++ show res) $ res
             else res
 
+-----------------------------------------------------------------------------
+-- ** Type inhabitation
+{-
+inhabitants :: SType -> [LTerm VarString SType]
+inhabitants t = inhabitants' t (0,[])
+
+inhabitants' :: SType -> (Int,TypeContext VarString) -> [LTerm VarString SType]
+inhabitants' (l :->: r) (i,cont) = map (LAbst (nameGen !! i) l :@:) $
+                                    inhabitants' r (i+1,(nameGen !! i,l):cont)
+inhabitants' (SAtom s) (i,cont)   = map (\(s,t) -> foldr :@: s (rightSpine t))
+                                        (filter (\ (_,t) -> resultType t == Just (SAtom s)) cont)
+
+resultType :: SType -> Maybe SType
+resultType (SAtom _) = Nothing
+resultType (l :->: r) = Just r
+-}

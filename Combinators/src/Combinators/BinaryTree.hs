@@ -87,6 +87,18 @@ leftSpineLength t = case decompose t of
                  Just (l,_r) ->  1 + leftSpineLength l
                  _ -> 1
 
+rightSpine :: BinaryTree t => t -> [t]
+rightSpine = reverse . spine'
+  where
+    spine' t = case decompose t of
+                Just (l,r) -> (l : spine' r)
+                Nothing -> [t]
+
+rightSpineLength :: BinaryTree t => t -> Int
+rightSpineLength t = case decompose t of
+                 Just (_l,r) ->  1 + rightSpineLength r
+                 _ -> 1
+
 nodeSize :: BinaryTree t => t -> Int
 nodeSize t = case decompose t of
                 Nothing -> 0

@@ -360,7 +360,7 @@ instance (Strategy s, ReductionContext c (LTerm VarString t), Show t)  => Reduct
 
 -- | Takes a string, parses it, applies normalOrderReduction and prints the result.
 reduceLambda :: String -> String
-reduceLambda = show . pp . reduceIt instrumentedContext NormalForm . (pparse :: String -> LTerm VarInt Untyped)
+reduceLambda = show . pp . reduceSForce . (pparse :: String -> LTerm VarInt Untyped)
 
 -----------------------------------------------------------------------------
 -- ** With de Bruijn indices

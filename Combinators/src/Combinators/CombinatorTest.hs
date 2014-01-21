@@ -175,61 +175,61 @@ prop_upDown2 zip' = case zipAnchestors zip' of
 -- example
 testReduction1 :: Assertion
 testReduction1 =
-    parseIKS "v" @=? (reduceIt instrumentedContext NormalForm . parseIKS) "S K (K x y) (I v)"
+    parseIKS "v" @=? (reduceSForce . parseIKS) "S K (K x y) (I v)"
 
 testReduction2 :: Assertion
 testReduction2 =
-    parseIKS "x" @=? (reduceIt instrumentedContext NormalForm . parseIKS) "S(S(K S)(S(K K)K))(K(S(K K))) x y"
+    parseIKS "x" @=? (reduceSForce . parseIKS) "S(S(K S)(S(K K)K))(K(S(K K))) x y"
 
 testReduction3 :: Assertion
 testReduction3 =
-    parseIKS "x z(y z)" @=? (reduceIt instrumentedContext NormalForm . parseIKS)
+    parseIKS "x z(y z)" @=? (reduceSForce . parseIKS)
                             "S(S(K S)(S(K(S(K S)))(S(K(S(K K)))S)))(K(K(S K K))) x y z"
 testReduction4 :: Assertion
 testReduction4 =
-    parseIKS "K (x y)" @=? (reduceIt instrumentedContext NormalForm . parseIKS) "S (K K) x y"
+    parseIKS "K (x y)" @=? (reduceSForce . parseIKS) "S (K K) x y"
 
 testReduction5 :: Assertion
 testReduction5 =
-    parseIKS "x y" @=? (reduceIt instrumentedContext NormalForm . parseIKS) "S(S(K S)(S(K K)(S(K S)K)))(K K) x y z"
+    parseIKS "x y" @=? (reduceSForce . parseIKS) "S(S(K S)(S(K K)(S(K S)K)))(K K) x y z"
 
 testReduction6 :: Assertion
 testReduction6 =
-    parseIKS "x z" @=? (reduceIt instrumentedContext NormalForm . parseIKS) "S(K S)(S(K K)) x y z"
+    parseIKS "x z" @=? (reduceSForce . parseIKS) "S(K S)(S(K K)) x y z"
 
 testReduction7 :: Assertion
 testReduction7 =
-    parseIKS "x z" @=? (reduceIt instrumentedContext NormalForm . parseIKS)
+    parseIKS "x z" @=? (reduceSForce . parseIKS)
                             "S(K K)(S(S(K S)(S(K K)(S K K)))(K(S K K))) x y z"
 
 testReduction8 :: Assertion
 testReduction8 =
-    parseIKS "x u (z u) (y u (z u))" @=? (reduceIt instrumentedContext NormalForm . parseIKS)
+    parseIKS "x u (z u) (y u (z u))" @=? (reduceSForce . parseIKS)
                             "S(K(S(K S)))(S(K S)(S(K S))) x y z u"
 
 testReduction9 :: Assertion
 testReduction9 =
-    parseIKS "x u (z u) (y u (z u))" @=? (reduceIt instrumentedContext NormalForm . parseIKS)
+    parseIKS "x u (z u) (y u (z u))" @=? (reduceSForce . parseIKS)
                             "S(S(K S)(S(K K)(S(K S)(S(K(S(K S)))S))))(K S) x y z u"
 
 testReduction10 :: Assertion
 testReduction10 =
-    parseIKS "x" @=? (reduceIt instrumentedContext NormalForm . parseIKS)
+    parseIKS "x" @=? (reduceSForce . parseIKS)
                            "S K K x"
 
 testReduction11 :: Assertion
 testReduction11 =
-    parseIKS "x y" @=? (reduceIt instrumentedContext NormalForm . parseIKS)
+    parseIKS "x y" @=? (reduceSForce . parseIKS)
                            "S(S(K S)K)(K(S K K)) x y"
 
 testReduction12 :: Assertion
 testReduction12 =
-    parseIKS "x y" @=? (reduceIt instrumentedContext NormalForm . parseIKS)
+    parseIKS "x y" @=? (reduceSForce . parseIKS)
                            "S(S(K S)K)(K I) x y"
 
 testReduction13 :: Assertion
 testReduction13 =
-    parseIKS "x z" @=? (reduceIt instrumentedContext NormalForm . parseIKS)
+    parseIKS "x z" @=? (reduceSForce . parseIKS)
                            "S(K S)(S(K K)) x y z"
 
 

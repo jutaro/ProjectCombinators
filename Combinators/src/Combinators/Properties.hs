@@ -24,10 +24,8 @@ module Combinators.Properties (
 import Combinators.Combinator
 import Combinators.Reduction
 import Combinators.Variable (nameGen)
-import Debug.Trace (trace)
 import Combinators.BinaryTree (BinaryTree(..), leftSpine)
 import Data.List ((\\), nub, sort)
-import Control.Monad (liftM2, liftM)
 -- import Combinators.Variable
 
 -----------------------------------------------------------------------------
@@ -36,7 +34,7 @@ import Control.Monad (liftM2, liftM)
 
 -- | A term t is in weak normal form, iff M contains no redexes.
 isWeakNormal :: Basis basis => CTerm basis -> Bool
-isWeakNormal t = case reduceOnce nullContext NormalForm t of
+isWeakNormal t = case reduceOnceS t of
                     Just _ -> False
                     Nothing -> True -- term not changed, so no redex
 
@@ -116,7 +114,7 @@ isPermutator i term = do
 
 -- | Is this combinator a permutator?
 isRegular :: Basis basis => Int -> CTerm basis -> Maybe Bool
-isRegular 0 term = Nothing
+isRegular i _term | i <= 0 = Nothing
 isRegular i term = do
     let vars@(hv:_)     = map Var (take i nameGen)
         inTerm   = foldl (:@) term vars

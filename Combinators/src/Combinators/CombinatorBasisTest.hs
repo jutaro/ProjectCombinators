@@ -22,21 +22,20 @@ import Test.HUnit (assertBool)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.Framework (Test)
 import Combinators.BinaryTree (PP(..))
-import Combinators.Reduction
-       (instrumentedContext, NormalForm(..), reduceIt)
+import Combinators.Reduction(reduceSForce)
 
 
 testWK :: Assertion
 testWK  = assertBool "testWK" $ (pparse :: String -> CTerm IKBCW) "x" ==
-            (reduceIt instrumentedContext NormalForm . pparse) "W K x"
+            (reduceSForce . pparse) "W K x"
 
 testS :: Assertion
 testS  = assertBool "testS" $ (pparse :: String -> CTerm IKBCW) "x z (y z)" ==
-            (reduceIt instrumentedContext NormalForm . pparse) "B (B (B W) C) (B B) x y z"
+            (reduceSForce . pparse) "B (B (B W) C) (B B) x y z"
 
 testS2 :: Assertion
 testS2  = assertBool "testS2" $ (pparse :: String -> CTerm IKBCW) "x z (y z)" ==
-            (reduceIt instrumentedContext NormalForm . pparse) "B (B W) (B B C) x y z"
+            (reduceSForce . pparse) "B (B W) (B B C) x y z"
 
 
 testBasis :: [Test]

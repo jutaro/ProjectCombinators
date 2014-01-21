@@ -102,132 +102,132 @@ testReduction0 =
 
 testReduction1 :: Assertion
 testReduction1 =
-    (pparse :: String -> LTerm VarString Untyped) "y y y" @=? (reduceIt instrumentedContext NormalForm . pparse) "(\\x.x x) y y"
+    (pparse :: String -> LTerm VarString Untyped) "y y y" @=? (reduceSForce . pparse) "(\\x.x x) y y"
 
 testReduction2 :: Assertion
 testReduction2 =
-    (pparse :: String -> LTerm VarString Untyped) "\\s.s s" @=? (reduceIt instrumentedContext NormalForm . pparse) "(\\f.f) (\\x.x) \\s.s s"
+    (pparse :: String -> LTerm VarString Untyped) "\\s.s s" @=? (reduceSForce . pparse) "(\\f.f) (\\x.x) \\s.s s"
 
 testReduction3 :: Assertion
 testReduction3 =
-    (pparse :: String -> LTerm VarString Untyped) "\\t. (y y y)" @=? (reduceIt instrumentedContext NormalForm . pparse) "\\t.(\\x.x x) y y"
+    (pparse :: String -> LTerm VarString Untyped) "\\t. (y y y)" @=? (reduceSForce . pparse) "\\t.(\\x.x x) y y"
 
 testReduction4 :: Assertion
 testReduction4 =
-    (pparse :: String -> LTerm VarString Untyped) "y (y y y)" @=? (reduceIt instrumentedContext NormalForm . pparse)
+    (pparse :: String -> LTerm VarString Untyped) "y (y y y)" @=? (reduceSForce . pparse)
                 "(\\x. x) y ((\\x.x x) y y)"
 
 testReduction5 :: Assertion
 testReduction5 =
-    (pparse :: String -> LTerm VarString Untyped) "x" @=? (reduceIt instrumentedContext NormalForm . pparse)
+    (pparse :: String -> LTerm VarString Untyped) "x" @=? (reduceSForce . pparse)
                 "(\\t. x) y"
 
 -- | two tie theta
 testReduction6 :: Assertion
 testReduction6 =
-    (pparse :: String -> LTerm VarString Untyped) "y" @=? (reduceIt instrumentedContext NormalForm . pparse)
+    (pparse :: String -> LTerm VarString Untyped) "y" @=? (reduceSForce . pparse)
                 "(\\x.(\\x.y) x) x"
 
 testReduction7 :: Assertion
 testReduction7 =
-    (pparse :: String -> LTerm VarString Untyped) "x x (x x (x x)) \\z.z z" @=? (reduceIt instrumentedContext NormalForm . pparse)
+    (pparse :: String -> LTerm VarString Untyped) "x x (x x (x x)) \\z.z z" @=? (reduceSForce . pparse)
                 "(\\x. (\\y. y(y y)) x) (x x) (\\z.z z)"
 
 testReduction8 :: Assertion
 testReduction8 =
-    (pparse :: String -> LTerm VarString Untyped) "\\y.x x y (x x y)" @=? (reduceIt instrumentedContext NormalForm . pparse)
+    (pparse :: String -> LTerm VarString Untyped) "\\y.x x y (x x y)" @=? (reduceSForce . pparse)
                 "(\\ z y. x x y (x x y)) x"
 
 testReduction9 :: Assertion
 testReduction9 =
-    (pparse :: String -> LTerm VarString Untyped) "y (v v)" @=? (reduceIt instrumentedContext NormalForm . pparse)
+    (pparse :: String -> LTerm VarString Untyped) "y (v v)" @=? (reduceSForce . pparse)
                 "(\\x. x) y ((\\z. z z) v)"
 
 testReduction10 :: Assertion
 testReduction10 =
-    (pparse :: String -> LTerm VarString Untyped) "y" @=? (reduceIt instrumentedContext NormalForm . pparse)
+    (pparse :: String -> LTerm VarString Untyped) "y" @=? (reduceSForce . pparse)
                 "(\\x. x y) \\z. z"
 
 -- infinite reduction
 testReduction11 :: Assertion
 testReduction11 =
-    Nothing @=? (reduce instrumentedContext NormalForm . (pparse :: String -> LTerm VarString Untyped))
+    Nothing @=? (reduceS . (pparse :: String -> LTerm VarString Untyped))
                 "(\\x. x) ((\\y z. z(y y z))(\\y z. z(y y z))x)"
 
 -- composite beta reduction
 testReduction12 :: Assertion
 testReduction12 =
-    (pparse :: String -> LTerm VarString Untyped) "y (v v)" @=? (reduceIt instrumentedContext NormalForm . pparse)
+    (pparse :: String -> LTerm VarString Untyped) "y (v v)" @=? (reduceSForce . pparse)
                 "(\\x.x) y ((\\z.z z) v)"
 
 -- name clashes (alpha renaming, de bruijn indices  (b b) is wrong (a b) is correct.
 testReduction13 :: Assertion
 testReduction13 =
-    (pparse :: String -> LTerm VarString Untyped) "a b" @=? (reduceIt instrumentedContext NormalForm . pparse)
+    (pparse :: String -> LTerm VarString Untyped) "a b" @=? (reduceSForce . pparse)
                 "(\\f a.f a) a b"
 
 testReductionB1 :: Assertion
 testReductionB1 =
-    (pparse :: String -> LTerm VarInt Untyped) "y y y" @=? (reduceIt instrumentedContext NormalForm . pparse) "(\\x.x x) y y"
+    (pparse :: String -> LTerm VarInt Untyped) "y y y" @=? (reduceSForce . pparse) "(\\x.x x) y y"
 
 testReductionB2 :: Assertion
 testReductionB2 =
-    (pparse :: String -> LTerm VarInt Untyped) "\\s.s s" @=? (reduceIt instrumentedContext NormalForm . pparse) "(\\f.f) (\\x.x) \\s.s s"
+    (pparse :: String -> LTerm VarInt Untyped) "\\s.s s" @=? (reduceSForce . pparse) "(\\f.f) (\\x.x) \\s.s s"
 
 testReductionB3 :: Assertion
 testReductionB3 =
-    (pparse :: String -> LTerm VarInt Untyped) "\\t. (y y y)" @=? (reduceIt instrumentedContext NormalForm . pparse) "\\t.(\\x.x x) y y"
+    (pparse :: String -> LTerm VarInt Untyped) "\\t. (y y y)" @=? (reduceSForce . pparse) "\\t.(\\x.x x) y y"
 
 testReductionB4 :: Assertion
 testReductionB4 =
-    (pparse :: String -> LTerm VarInt Untyped) "y (y y y)" @=? (reduceIt instrumentedContext NormalForm . pparse)
+    (pparse :: String -> LTerm VarInt Untyped) "y (y y y)" @=? (reduceSForce . pparse)
                 "(\\x. x) y ((\\x.x x) y y)"
 
 testReductionB5 :: Assertion
 testReductionB5 =
-    (pparse :: String -> LTerm VarInt Untyped) "x" @=? (reduceIt instrumentedContext NormalForm . pparse)
+    (pparse :: String -> LTerm VarInt Untyped) "x" @=? (reduceSForce . pparse)
                 "(\\t. x) y"
 
 -- | two tie theta
 testReductionB6 :: Assertion
 testReductionB6 =
-    (pparse :: String -> LTerm VarInt Untyped) "y" @=? (reduceIt instrumentedContext NormalForm . pparse)
+    (pparse :: String -> LTerm VarInt Untyped) "y" @=? (reduceSForce . pparse)
                 "(\\x.(\\x.y) x) x"
 
 testReductionB7 :: Assertion
 testReductionB7 =
-    (pparse :: String -> LTerm VarInt Untyped) "x x (x x (x x)) \\z.z z" @=? (reduceIt instrumentedContext NormalForm . pparse)
+    (pparse :: String -> LTerm VarInt Untyped) "x x (x x (x x)) \\z.z z" @=? (reduceSForce . pparse)
                 "(\\x. (\\y. y(y y)) x) (x x) (\\z.z z)"
 
 testReductionB8 :: Assertion
 testReductionB8 =
-    (pparse :: String -> LTerm VarInt Untyped) "\\y.x x y (x x y)" @=? (reduceIt instrumentedContext NormalForm . pparse)
+    (pparse :: String -> LTerm VarInt Untyped) "\\y.x x y (x x y)" @=? (reduceSForce . pparse)
                 "(\\ z y. x x y (x x y)) x"
 
 testReductionB9 :: Assertion
 testReductionB9 =
-    (pparse :: String -> LTerm VarInt Untyped) "y (v v)" @=? (reduceIt instrumentedContext NormalForm . pparse)
+    (pparse :: String -> LTerm VarInt Untyped) "y (v v)" @=? (reduceSForce . pparse)
                 "(\\x. x) y ((\\z. z z) v)"
 
 testReductionB10 :: Assertion
 testReductionB10 =
-    (pparse :: String -> LTerm VarInt Untyped) "y" @=? (reduceIt instrumentedContext NormalForm . pparse)
+    (pparse :: String -> LTerm VarInt Untyped) "y" @=? (reduceSForce . pparse)
                 "(\\x. x y) \\z. z"
 
 -- infinite reduction
 testReductionB11 :: Assertion
 testReductionB11 =
-    Nothing @=? (reduce instrumentedContext NormalForm . (pparse :: String -> LTerm VarInt Untyped))
+    Nothing @=? (reduceS . (pparse :: String -> LTerm VarInt Untyped))
                 "(\\x. x) ((\\y z. z(y y z))(\\y z. z(y y z))x)"
 
 -- composite beta reduction
 testReductionB12 :: Assertion
 testReductionB12 =
-    (pparse :: String -> LTerm VarInt Untyped) "y (v v)" @=? (reduceIt instrumentedContext NormalForm . pparse)
+    (pparse :: String -> LTerm VarInt Untyped) "y (v v)" @=? (reduceSForce . pparse)
                 "(\\x.x) y ((\\z.z z) v)"
 
 -- name clashes (alpha renaming, de bruijn indices  (b b) is wrong (a b) is correct.
 testReductionB13 :: Assertion
 testReductionB13 =
-    (pparse :: String -> LTerm VarInt Untyped) "a b" @=? (reduceIt instrumentedContext NormalForm . pparse)
+    (pparse :: String -> LTerm VarInt Untyped) "a b" @=? (reduceSForce . pparse)
                 "(\\f a.f a) a b"
