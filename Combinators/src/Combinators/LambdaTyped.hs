@@ -18,17 +18,19 @@
 module Combinators.LambdaTyped (
     typeLambda,
     untypeLambda,
-    reconstructType
+    reconstructType,
+    inhabitants
 ) where
 
-import Combinators.BinaryTree (rightSpine, PP(..), PP)
+import Combinators.BinaryTree
+       (BinaryTree(..), BinaryTree, PP(..), PP)
 import Combinators.Lambda
 import Combinators.Types
 import Combinators.Variable
        (nameGen, VarInt, varParse, varPp, VarString)
 
 import qualified Text.PrettyPrint as PP
-       ((<+>), fsep, fcat, parens, text, Doc)
+       ((<>), (<+>), fsep, fcat, parens, text, Doc)
 import Text.Parsec.String (Parser)
 import qualified Text.Parsec as PA
        (many1, (<|>), char, (<?>), try, option, spaces)
@@ -48,7 +50,8 @@ ppSt' il rm l ((LAbst v ty1) :@: ((LAbst v' ty2) :@: t'))
                                               = ppSt' il rm ((v,ty1) : l) ((LAbst v' ty2) :@: t')
 ppSt' il False l ((LAbst v ty) :@: t)         = PP.parens $ ppSt' il True l ((LAbst v ty) :@: t)
 ppSt' _ True l ((LAbst v ty) :@: t)  = PP.fcat [PP.text "\\",
-                                                PP.fsep (map (\(v,ty) -> (PP.text (varPp v)) PP.<+> pp ty)
+                                                PP.fsep (map (\(v,ty) -> (PP.text (varPp v))
+                                                            PP.<> PP.text ":" PP.<>pp ty)
                                                     (reverse ((v,ty):l))),
                                                         PP.text ".", ppSt' True True [] t]
 ppSt' True rm _ (l :@: r)                     = PP.fsep [ppSt' True False [] l, ppSt' False rm [] r]
@@ -223,18 +226,39 @@ reconstructType traceIt (index,env) t =
             else res
 
 -----------------------------------------------------------------------------
--- ** Type inhabitation
-{-
+-- ** Type inhabitation for simple types
+
 inhabitants :: SType -> [LTerm VarString SType]
-inhabitants t = inhabitants' t (0,[])
+inhabitants t = fst $ inhabitants' t (0,[])
 
-inhabitants' :: SType -> (Int,TypeContext VarString) -> [LTerm VarString SType]
-inhabitants' (l :->: r) (i,cont) = map (LAbst (nameGen !! i) l :@:) $
-                                    inhabitants' r (i+1,(nameGen !! i,l):cont)
-inhabitants' (SAtom s) (i,cont)   = map (\(s,t) -> foldr :@: s (rightSpine t))
-                                        (filter (\ (_,t) -> resultType t == Just (SAtom s)) cont)
+inhabitants', inhabitants'' :: SType -> (Int,TypeContext VarString) -> ([LTerm VarString SType],(Int,TypeContext VarString))
+inhabitants'' (l :->: r) (i,cont) = (\(t,tup) -> (map (LAbst (nameGen !! i) l :@:) t,tup))
+                                        $ inhabitants' r (i+1,(nameGen !! i,l):cont)
+inhabitants'' (SAtom s) (i,cont)   = let res = map (\(s,tl) -> foldr calc ([LVar s],(i,cont)) tl)
+                                                    $ map (\ (v,t) -> (v,leftSpineRest t))
+                                                        $ filter (\ (_,t) -> resultType t == (SAtom s))
+                                                            cont
+                                     in (concatMap fst res, case res of
+                                                                (hd:_) -> snd hd
+                                                                _ -> (i,cont))
+  where
+--    calc :: SType -> ([LTerm VarString SType],(Int,TypeContext VarString)) ->
+--                            ([LTerm VarString SType],(Int,TypeContext VarString))
+    calc t (s,(i,cont)) = let (t',tup) = inhabitants' t (i,cont)
+                          in  ([l :@:r| l <- s, r <- t'],tup)
 
-resultType :: SType -> Maybe SType
-resultType (SAtom _) = Nothing
-resultType (l :->: r) = Just r
--}
+inhabitants' st contTupel = trace ("inhabitants type: " ++ pps st ++ " contTupel: " ++ show contTupel) $
+                                let res =  inhabitants'' st contTupel
+                                in trace ("inhabitants res: " ++ show res) $ res
+
+resultType :: SType -> SType
+resultType a@(SAtom _) = a
+resultType (_l :->: r) = r
+
+leftSpineRest :: BinaryTree t => t -> [t]
+leftSpineRest = reverse . tail . spine'
+  where
+    spine' t = case decompose t of
+                Just (l,r) -> (r : spine' l)
+                Nothing -> [t]
+
