@@ -1,3 +1,4 @@
+{-# LANGUAGE ParallelListComp #-}
 -----------------------------------------------------------------------------
 --
 -- Module      :  Combinators.LambdaTyped
@@ -19,22 +20,27 @@ module Combinators.LambdaTyped (
     typeLambda,
     untypeLambda,
     reconstructType,
-    inhabitants
+    inhabitants,
+    inhabitants''
 ) where
 
 import Combinators.BinaryTree
-       (BinaryTree(..), BinaryTree, PP(..), PP)
+       (rightSpine, BinaryTree(..), BinaryTree, PP(..), PP)
 import Combinators.Lambda
 import Combinators.Types
 import Combinators.Variable
        (nameGen, VarInt, varParse, varPp, VarString)
 
 import qualified Text.PrettyPrint as PP
-       ((<>), (<+>), fsep, fcat, parens, text, Doc)
+       ((<>), fsep, fcat, parens, text, Doc)
 import Text.Parsec.String (Parser)
 import qualified Text.Parsec as PA
        (many1, (<|>), char, (<?>), try, option, spaces)
 import Debug.Trace (trace)
+import Control.Monad.Trans.Reader (runReader, Reader)
+import Control.Monad.Trans.State (get, modify, State, runState)
+import Control.Monad (liftM, foldM)
+import Data.List (transpose)
 
 -----------------------------------------------------------------------------
 -- ** Lambda terms with simple types
@@ -228,37 +234,50 @@ reconstructType traceIt (index,env) t =
 -----------------------------------------------------------------------------
 -- ** Type inhabitation for simple types
 
+
+
 inhabitants :: SType -> [LTerm VarString SType]
-inhabitants t = fst $ inhabitants' t (0,[])
+inhabitants t = fst $ runState (inhabitants' t) (0,[])
 
-inhabitants', inhabitants'' :: SType -> (Int,TypeContext VarString) -> ([LTerm VarString SType],(Int,TypeContext VarString))
-inhabitants'' (l :->: r) (i,cont) = (\(t,tup) -> (map (LAbst (nameGen !! i) l :@:) t,tup))
-                                        $ inhabitants' r (i+1,(nameGen !! i,l):cont)
-inhabitants'' (SAtom s) (i,cont)   = let res = map (\(s,tl) -> foldr calc ([LVar s],(i,cont)) tl)
-                                                    $ map (\ (v,t) -> (v,leftSpineRest t))
-                                                        $ filter (\ (_,t) -> resultType t == (SAtom s))
-                                                            cont
-                                     in (concatMap fst res, case res of
-                                                                (hd:_) -> snd hd
-                                                                _ -> (i,cont))
+inhabitants', inhabitants'' :: SType -> State (Int,TypeContext VarString) [LTerm VarString SType]
+inhabitants'' (l :->: r) = do
+    (iu,_) <- get
+    modify (\ (i,cont) -> (i+1,(nameGen !! i,l):cont))
+    rec <- inhabitants' r
+    return (map (LAbst (nameGen !! iu) l :@:) rec)
+
+inhabitants'' (SAtom s)  = do
+    (_,cont) <- get
+    let tupels = map (\ (v,t) -> (v,rightRest t))
+                    $ (filter (\(_,t) -> resultType t == (SAtom s)))
+                        cont
+    res <- -- trace ("tupels: " ++ show tupels) $
+            -- for every tupel find solutions
+                mapM (\(s,tl) ->  foldM calc [LVar s] tl) tupels
+    return (concat res)
+
   where
---    calc :: SType -> ([LTerm VarString SType],(Int,TypeContext VarString)) ->
---                            ([LTerm VarString SType],(Int,TypeContext VarString))
-    calc t (s,(i,cont)) = let (t',tup) = inhabitants' t (i,cont)
-                          in  ([l :@:r| l <- s, r <- t'],tup)
+            -- for one tupel find solutions
+    calc :: [LTerm VarString SType] -> SType -> State (Int,TypeContext VarString) [LTerm VarString SType]
+    calc s t = do
+        t' <- inhabitants' t
+        return [l :@:r| l <- s , r <- t']
 
-inhabitants' st contTupel = trace ("inhabitants type: " ++ pps st ++ " contTupel: " ++ show contTupel) $
-                                let res =  inhabitants'' st contTupel
-                                in trace ("inhabitants res: " ++ show res) $ res
+--         let res = concat ll
+--         trace ("calcRes: " ++ show res ++ " ll: " ++ show ll ++ " s: " ++ show s) $ return res
+
+inhabitants' st = -- trace ("inhabitants type: " ++ pps st) $
+    do
+        (_,cont) <- get
+        res <- -- trace ("cont: " ++ show cont) $
+                inhabitants'' st
+        return (res)
 
 resultType :: SType -> SType
-resultType a@(SAtom _) = a
-resultType (_l :->: r) = r
+resultType a = head (rightSpine a)
 
-leftSpineRest :: BinaryTree t => t -> [t]
-leftSpineRest = reverse . tail . spine'
-  where
-    spine' t = case decompose t of
-                Just (l,r) -> (r : spine' l)
-                Nothing -> [t]
+rightRest :: BinaryTree t => t -> [t]
+rightRest t = case decompose t of
+                Nothing -> []
+                Just _ -> reverse (tail (rightSpine t))
 
