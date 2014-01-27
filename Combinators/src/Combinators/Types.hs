@@ -12,7 +12,8 @@
 --
 -----------------------------------------------------------------------------
 
-{-# LANGUAGE DataKinds, GADTs, StandaloneDeriving, TypeSynonymInstances, FlexibleInstances, Rank2Types #-}
+{-# LANGUAGE DataKinds, GADTs, StandaloneDeriving, TypeSynonymInstances, FlexibleInstances, Rank2Types,
+    OverlappingInstances  #-}
 
 module Combinators.Types (
     SType(..),

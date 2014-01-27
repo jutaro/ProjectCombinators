@@ -36,11 +36,8 @@ import qualified Text.PrettyPrint as PP
 import Text.Parsec.String (Parser)
 import qualified Text.Parsec as PA
        (many1, (<|>), char, (<?>), try, option, spaces)
-import Debug.Trace (trace)
-import Control.Monad.Trans.Reader (runReader, Reader)
-import Control.Monad.Trans.State (get, modify, State, runState)
-import Control.Monad (liftM, foldM)
 import Data.List (transpose)
+import Debug.Trace (trace)
 
 -----------------------------------------------------------------------------
 -- ** Lambda terms with simple types
@@ -235,49 +232,48 @@ reconstructType traceIt (index,env) t =
 -- ** Type inhabitation for simple types
 
 
+inhabitants :: SType -> Int -> [LTerm VarString SType]
+inhabitants t level = fst $ inhabitants' t level (0,[])
 
-inhabitants :: SType -> [LTerm VarString SType]
-inhabitants t = fst $ runState (inhabitants' t) (0,[])
+inhabitants', inhabitants'' :: SType -> Int -> (Int,TypeContext VarString) ->
+        ([LTerm VarString SType],(Int,TypeContext VarString))
+inhabitants'' (l :->: r) level (i,cont) =
+    let name = nameGen !! i
+        (rec,(i',cont')) = inhabitants' r level (i+1,(name,l):cont)
+    in (map (LAbst name l :@:) rec,(i',cont'))
 
-inhabitants', inhabitants'' :: SType -> State (Int,TypeContext VarString) [LTerm VarString SType]
-inhabitants'' (l :->: r) = do
-    (iu,_) <- get
-    modify (\ (i,cont) -> (i+1,(nameGen !! i,l):cont))
-    rec <- inhabitants' r
-    return (map (LAbst (nameGen !! iu) l :@:) rec)
-
-inhabitants'' (SAtom s)  = do
-    (_,cont) <- get
+inhabitants'' (SAtom s) level (i,cont)
+                                | level == 0 = ([],(i,cont))
+                                | otherwise  =
     let tupels = map (\ (v,t) -> (v,rightRest t))
                     $ (filter (\(_,t) -> resultType t == (SAtom s)))
                         cont
-    res <- -- trace ("tupels: " ++ show tupels) $
-            -- for every tupel find solutions
-                mapM (\(s,tl) ->  foldM calc [LVar s] tl) tupels
-    return (concat res)
+        (res,(i',cont')) = foldr (\(s,tl) (accu,(i',cont')) ->
+                                let (res,(i'',cont'')) = foldr calc ([LVar s],(i',cont')) tl
+                                in (res : accu,(i'',cont'')))
+                                    ([],(i,cont)) tupels
+    in (concat (transpose res),(i',cont'))
 
   where
             -- for one tupel find solutions
-    calc :: [LTerm VarString SType] -> SType -> State (Int,TypeContext VarString) [LTerm VarString SType]
-    calc s t = do
-        t' <- inhabitants' t
-        return [l :@:r| l <- s , r <- t']
+    calc :: SType -> ([LTerm VarString SType],(Int,TypeContext VarString)) ->
+                        ([LTerm VarString SType],(Int,TypeContext VarString))
+    calc st (te,(i,cont)) =
+        let (te',(i',cont')) = inhabitants' st (level - 1) (i,cont)
+        in ([l :@: r | l <- te , r <- te' ],(i',cont'))
 
---         let res = concat ll
---         trace ("calcRes: " ++ show res ++ " ll: " ++ show ll ++ " s: " ++ show s) $ return res
+    resultType :: SType -> SType
+    resultType a = head (rightSpine a)
 
-inhabitants' st = -- trace ("inhabitants type: " ++ pps st) $
-    do
-        (_,cont) <- get
-        res <- -- trace ("cont: " ++ show cont) $
-                inhabitants'' st
-        return (res)
+    rightRest :: BinaryTree t => t -> [t]
+    rightRest t = case decompose t of
+                    Nothing -> []
+                    Just _ -> reverse (tail (rightSpine t))
 
-resultType :: SType -> SType
-resultType a = head (rightSpine a)
 
-rightRest :: BinaryTree t => t -> [t]
-rightRest t = case decompose t of
-                Nothing -> []
-                Just _ -> reverse (tail (rightSpine t))
+inhabitants' st level (i,cont) = -- trace ("inhabitants type: " ++ pps st) $
+        let res = -- trace ("cont: " ++ show cont) $
+                inhabitants'' st level (i,cont)
+        in res
+
 
