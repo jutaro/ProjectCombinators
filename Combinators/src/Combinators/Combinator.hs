@@ -50,6 +50,7 @@ import Control.Monad (liftM)
 import Text.Parsec.String (Parser)
 import qualified Text.PrettyPrint as PP
 import qualified Text.Parsec as PA
+import Combinators.PrintingParsing (PP(..),parens')
 
 -- (inspired by Katalin Bimbo's book).
 
@@ -200,6 +201,7 @@ parseComb, parsePrim, parseVar
 parseComb = do
     start <- PA.upper
     rest  <- PA.many (PA.noneOf " ()\t\n\r\f\v")
+    PA.spaces
     case filter (\pc -> combName pc == start:rest) primCombs of
                 [c] -> return (Const c)
                 _ -> PA.unexpected $ "unknown primitive combinator: " ++ start:rest
@@ -209,37 +211,32 @@ parseVar = liftM Var varParse
 
 parsePrim = parseVar PA.<|> parseComb PA.<?> "parsePrim"
 
-parseTerm, parseTerm' :: (Basis basis) => Maybe (CTerm basis)
+parseTerm :: (Basis basis) => Maybe (CTerm basis)
                                         -> Parser (CTerm basis)
-parseTerm condL = do
-    PA.spaces
-    parseTerm' condL
 
 parseLeft :: (Basis basis) => Parser (CTerm basis)
-parseLeft = do
-    PA.char '('
-    t <- parseTerm Nothing
-    PA.spaces
-    PA.char ')'
-    return t
+parseLeft = parens' (parseTerm Nothing)
 
-parseTerm' Nothing =
+parseTerm Nothing = do
+    PA.spaces
     do
         t <- parseLeft
         PA.option t $ PA.try (parseTerm (Just t))
     PA.<|> do
         l <- parsePrim
         PA.option l $ PA.try (parseTerm (Just l))
-    PA.<?> "parseTerm' Nothing"
+    PA.<?> "parseTerm Nothing"
 
-parseTerm' (Just l') =
+parseTerm (Just l') = do
+    PA.spaces
     do
         t <- parseLeft
         PA.option (l' :@ t) $ PA.try (parseTerm (Just (l' :@ t)))
     PA.<|> do
         l <- parsePrim
         PA.option (l' :@ l) $ PA.try (parseTerm (Just (l' :@ l)))
-    PA.<?> "parseTerm'"
+    PA.<?> "parseTerm"
+
 
 -----------------------------------------------------------------------------
 -- ** Subterms

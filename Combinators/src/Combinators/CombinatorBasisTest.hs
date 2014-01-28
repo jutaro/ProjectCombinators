@@ -21,8 +21,8 @@ import Test.HUnit.Base (Assertion)
 import Test.HUnit (assertBool)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.Framework (Test)
-import Combinators.BinaryTree (PP(..))
 import Combinators.Reduction(reduceSForce)
+import Combinators.PrintingParsing (PP(..))
 
 
 testWK :: Assertion

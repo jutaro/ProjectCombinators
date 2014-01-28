@@ -26,8 +26,8 @@ import Combinators.Combinator
        (Combinator(..), CTerm(..), CTerm, Basis)
 import Combinators.Variable (VarString)
 import Combinators.Reduction (TermString(..))
-import Combinators.BinaryTree (PP(..))
 import Debug.Trace (trace)
+import Combinators.PrintingParsing (PP(..))
 
 -----------------------------------------------------------------------------
 -- ** Combinators

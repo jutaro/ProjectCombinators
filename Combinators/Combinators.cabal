@@ -23,7 +23,8 @@ library
     buildable: True
     default-language: Haskell2010
     hs-source-dirs: src
-    other-modules: Combinators.CombinatorTyped
+    other-modules: Combinators.PrintingParsing
+                   Combinators.LambdaTypedTest Combinators.CombinatorTyped
                    Combinators.CombLambdaTest Combinators.CombinatorTyped
                    Combinators.Queries Combinators.LambdaTyped Combinators.TypesTest
                    Combinators.Types Combinators.Reduction
@@ -46,7 +47,8 @@ executable combinators
     buildable: True
     default-language: Haskell2010
     hs-source-dirs: src
-    other-modules: Combinators.CombinatorTyped
+    other-modules: Combinators.PrintingParsing
+                   Combinators.LambdaTypedTest Combinators.CombinatorTyped
                    Combinators.CombLambdaTest Combinators.CombinatorTyped
                    Combinators.Queries Combinators.LambdaTyped Combinators.TypesTest
                    Combinators.Types Combinators.Reduction
@@ -70,7 +72,8 @@ executable bench-combinators
     buildable: True
     default-language: Haskell2010
     hs-source-dirs: src
-    other-modules: Combinators.CombinatorTyped
+    other-modules: Combinators.PrintingParsing
+                   Combinators.LambdaTypedTest Combinators.CombinatorTyped
                    Combinators.CombLambdaTest Combinators.CombinatorTyped
                    Combinators.Queries Combinators.LambdaTyped Combinators.TypesTest
                    Combinators.Types Combinators.Reduction
@@ -85,8 +88,8 @@ executable bench-combinators
     ghc-options: -rtsopts -threaded -fexcess-precision -funbox-strict-fields -Wall -fno-warn-unused-do-bind -fno-warn-name-shadowing -O3
  
 test-suite test-combinators
-    build-depends: base -any, parsec -any, pretty -any,
-                   QuickCheck -any, HUnit -any, test-framework -any,
+    build-depends: parallel >=3.2.0.3 && <3.3, base -any, parsec -any,
+                   pretty -any, QuickCheck -any, HUnit -any, test-framework -any,
                    test-framework-quickcheck2 -any, test-framework-hunit -any,
                    array -any, containers -any, transformers -any
     type: exitcode-stdio-1.0

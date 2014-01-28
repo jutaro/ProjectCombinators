@@ -46,6 +46,7 @@ import Control.Monad (liftM)
 import Control.Monad.Trans.State
 import qualified Data.Set as Set (member, insert, empty, Set)
 import Combinators.Variable (VarString)
+import Combinators.PrintingParsing (PP(..), PP)
 
 
 -----------------------------------------------------------------------------

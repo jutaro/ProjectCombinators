@@ -46,6 +46,7 @@ import Text.PrettyPrint
 import Data.Maybe (isJust)
 import Debug.Trace (trace)
 import Combinators.Reduction (Term(..))
+import Combinators.PrintingParsing (PP(..), symbol', parens')
 
 -----------------------------------------------------------------------------
 -- * Simple Types
@@ -154,21 +155,16 @@ pp' _ (SAtom s)      = PP.text s
 
 parseType :: [SType] -> Parser SType
 parseType left = do
+    PA.spaces
     PA.try $ do
         atom <- sAtomParse
         PA.option (foldr (:->:) atom (reverse left)) (do
-            PA.spaces
-            PA.string "->"
+            symbol' "->"
             parseType (atom : left))
     PA.<|> do
-            PA.spaces
-            PA.char '('
-            t <- parseType []
-            PA.spaces
-            PA.char ')'
+            t <- parens' (parseType [])
             PA.option (foldr (:->:) t (reverse left)) (do
-                PA.spaces
-                PA.string "->"
+                symbol' "->"
                 parseType (t:left))
     PA.<?> "Type"
 
@@ -176,7 +172,8 @@ sAtomParse :: Parser SType
 sAtomParse = do
         PA.spaces
         start <- PA.lower
-        rest <- PA.many (PA.noneOf " ()\t\n\r\f\v.")
+        rest <- PA.many (PA.noneOf " :;,()[]\t\n\r\f\v.")
+        PA.spaces
         return (SAtom (start:rest))
     PA.<?> "sAtom"
 

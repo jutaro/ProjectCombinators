@@ -18,7 +18,6 @@ module Combinators.CombLambdaTest (
     testCombLambda
 ) where
 
-import Combinators.BinaryTree (PP(..))
 import Combinators.Combinator (KS, CTerm)
 import Combinators.CombinatorTest ()
 import Combinators.CombLambda (BracketAbstract(..), combToLambda)
@@ -31,6 +30,7 @@ import Combinators.Types (Untyped(..))
 import Test.Framework (Test)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Combinators.CombinatorBasis (IKBCW, IKS)
+import Combinators.PrintingParsing (PP, PP(..))
 
 trace :: a -> b -> b
 trace _a b = b

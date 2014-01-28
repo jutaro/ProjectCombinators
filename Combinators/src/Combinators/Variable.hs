@@ -41,9 +41,9 @@ varPp = id
 
 varParse :: Parser VarString
 varParse = do
-            PA.spaces
             start <- PA.lower
-            rest <- PA.many (PA.noneOf " ()\t\n\r\f\v.")
+            rest <- PA.many (PA.noneOf " :,;()[]\t\n\r\f\v.")
+            PA.spaces
             return (start:rest)
         PA.<?> "varParse for SimpleVar"
 

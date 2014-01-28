@@ -52,6 +52,7 @@ import Data.Maybe (fromJust)
 import qualified Data.List as List
        (lookup, elemIndex, elem, intersect, nub)
 import Control.Monad (liftM)
+import Combinators.PrintingParsing (PP(..), parens',symbol',dot')
 
 -----------------------------------------------------------------------------
 -- * Lambda calculus implementation
@@ -199,17 +200,11 @@ parsePart :: Parser (LTerm VarString Untyped)
 parsePart = do
     PA.spaces
     do
-        PA.char '('
-        l <- parseTerm Nothing
-        PA.spaces
-        PA.char ')'
-        return l
+        parens' (parseTerm Nothing)
     PA.<|> do
-        PA.char '\\'
-        PA.spaces
+        symbol' "\\"
         vl <- PA.many1 varParse
-        PA.spaces
-        PA.char '.'
+        dot'
         t <- parseTerm Nothing
         return (foldr ((:@:) . flip LAbst Untyped) t vl)
     PA.<|> do

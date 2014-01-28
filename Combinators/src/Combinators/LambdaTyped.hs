@@ -18,6 +18,7 @@
 
 module Combinators.LambdaTyped (
     typeLambda,
+    typeLambda',
     untypeLambda,
     reconstructType,
     inhabitants,
@@ -25,7 +26,7 @@ module Combinators.LambdaTyped (
 ) where
 
 import Combinators.BinaryTree
-       (rightSpine, BinaryTree(..), BinaryTree, PP(..), PP)
+       (rightSpine, BinaryTree(..))
 import Combinators.Lambda
 import Combinators.Types
 import Combinators.Variable
@@ -33,11 +34,13 @@ import Combinators.Variable
 
 import qualified Text.PrettyPrint as PP
        ((<>), fsep, fcat, parens, text, Doc)
+
 import Text.Parsec.String (Parser)
 import qualified Text.Parsec as PA
-       (many1, (<|>), char, (<?>), try, option, spaces)
+
 import Data.List (transpose)
 import Debug.Trace (trace)
+import Combinators.PrintingParsing (PP(..), parens', symbol', dot', colon')
 
 -----------------------------------------------------------------------------
 -- ** Lambda terms with simple types
@@ -79,19 +82,13 @@ parsePartSt :: Parser (LTerm VarString SType)
 parsePartSt = do
     PA.spaces
     do
-        PA.char '('
-        l <- parseTermSt Nothing
-        PA.spaces
-        PA.char ')'
-        return l
+        parens' (parseTermSt Nothing)
     PA.<|> do
-        PA.char '\\'
-        PA.spaces
-        vl <- PA.many1 typedVarParse
-        PA.spaces
-        PA.char '.'
+        symbol' "\\"
+        vl <- PA.many1 (PA.try typedVarParse)
+        dot'
         t <- parseTermSt Nothing
-        return (foldr (\ (v,ty) t -> t :@: LAbst v ty) t vl)
+        return (foldr (\ (v,ty) t -> LAbst v ty :@: t) t vl)
     PA.<|> do
         v <- varParse
         return (LVar v)
@@ -101,9 +98,7 @@ parsePartSt = do
 typedVarParse :: Parser (VarString,SType)
 typedVarParse = do
     v <- varParse
-    PA.spaces
-    PA.char ':'
-    PA.spaces
+    colon'
     ty <- parseType []
     return (v,ty)
     PA.<?> "typedVarParse"
@@ -173,6 +168,11 @@ typeLambda env term = case reconstructType False (length env,env) term of
                             Just (_,_,_,nt) -> Just $ nt
                             Nothing    -> Nothing
 
+-- | Convert an untyped term to a typed term if possible
+typeLambda' :: LTerm VarString Untyped -> Maybe (LTerm VarString SType)
+typeLambda' term = let env = map (\(v,i) -> (v, SAtom (typeVarGen !! i))) $ zip (freeVars term) [0..]
+                        in  typeLambda env term
+
 -- | Convert an typed term to an untyped term
 untypeLambda :: LTerm VarString SType -> LTerm VarString Untyped
 untypeLambda (LVar s)             = (LVar s)
@@ -231,36 +231,46 @@ reconstructType traceIt (index,env) t =
 -----------------------------------------------------------------------------
 -- ** Type inhabitation for simple types
 
+type InhContext = (Int,TypeContext VarString,[(Int,[LTerm VarString SType])])
 
 inhabitants :: SType -> Int -> [LTerm VarString SType]
-inhabitants t level = fst $ inhabitants' t level (0,[])
+inhabitants st level = fst $ inhabitants' st (0,[],[]) level
 
-inhabitants', inhabitants'' :: SType -> Int -> (Int,TypeContext VarString) ->
-        ([LTerm VarString SType],(Int,TypeContext VarString))
-inhabitants'' (l :->: r) level (i,cont) =
+inhabitants', inhabitants'' :: SType -> InhContext ->  Int ->
+        ([LTerm VarString SType],InhContext)
+inhabitants' st (i,cont,mem) level  = -- trace ("inhabitants type: " ++ pps st) $
+    case lookup level mem of
+        Just r -> (r,(i,cont,mem))
+        Nothing ->
+            let (res,(i',cont',mem')) = -- trace ("cont: " ++ show cont) $
+                    inhabitants'' st (i,cont,mem) level
+            in (res,(i',cont',(level,res):mem'))
+
+inhabitants'' (l :->: r)  (i,cont,mem) level =
     let name = nameGen !! i
-        (rec,(i',cont')) = inhabitants' r level (i+1,(name,l):cont)
-    in (map (LAbst name l :@:) rec,(i',cont'))
+        (rec,(i',cont',mem')) = inhabitants' r (i+1,(name,l):cont,mem) level
+    in (map (LAbst name l :@:) rec,(i',cont',mem'))
 
-inhabitants'' (SAtom s) level (i,cont)
-                                | level == 0 = ([],(i,cont))
+inhabitants'' (SAtom s) (i,cont,mem) level
+                                | level == 0 = ([],(i,cont,mem))
                                 | otherwise  =
     let tupels = map (\ (v,t) -> (v,rightRest t))
                     $ (filter (\(_,t) -> resultType t == (SAtom s)))
                         cont
-        (res,(i',cont')) = foldr (\(s,tl) (accu,(i',cont')) ->
-                                let (res,(i'',cont'')) = foldr calc ([LVar s],(i',cont')) tl
-                                in (res : accu,(i'',cont'')))
-                                    ([],(i,cont)) tupels
-    in (concat (transpose res),(i',cont'))
+        (res,(i',cont',mem')) = foldr (\(s,tl) (accu,(i',cont',mem')) ->
+                                    let (res,(i'',cont'',mem'')) =
+                                                foldr calc ([LVar s],(i',cont',mem')) tl
+                                    in (res : accu,(i'',cont'',mem'')))
+                                        ([],(i,cont,mem)) tupels
+    in (concat (transpose res),(i',cont',mem'))
 
   where
             -- for one tupel find solutions
-    calc :: SType -> ([LTerm VarString SType],(Int,TypeContext VarString)) ->
-                        ([LTerm VarString SType],(Int,TypeContext VarString))
-    calc st (te,(i,cont)) =
-        let (te',(i',cont')) = inhabitants' st (level - 1) (i,cont)
-        in ([l :@: r | l <- te , r <- te' ],(i',cont'))
+    calc :: SType -> ([LTerm VarString SType],InhContext) ->
+                        ([LTerm VarString SType],InhContext)
+    calc st (te,(i,cont,mem)) =
+        let (te',(i',cont',mem')) = inhabitants' st (i,cont,mem) (level - 1)
+        in ([l :@: r | l <- te , r <- te' ],(i',cont',mem'))
 
     resultType :: SType -> SType
     resultType a = head (rightSpine a)
@@ -271,9 +281,6 @@ inhabitants'' (SAtom s) level (i,cont)
                     Just _ -> reverse (tail (rightSpine t))
 
 
-inhabitants' st level (i,cont) = -- trace ("inhabitants type: " ++ pps st) $
-        let res = -- trace ("cont: " ++ show cont) $
-                inhabitants'' st level (i,cont)
-        in res
+
 
 

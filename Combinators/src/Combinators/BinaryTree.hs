@@ -14,75 +14,11 @@
 module Combinators.BinaryTree where
 
 import Data.Maybe (isNothing)
-import Text.PrettyPrint
-       (punctuate, vcat, braces, text, renderStyle, style, Doc,
-        Style(..))
-import Text.PrettyPrint.HughesPJ (Mode(..))
-import qualified Text.Parsec as PP
-       ((<?>), (<|>), parse, ParseError)
-import qualified Text.Parsec.String as PP (Parser)
-import qualified Text.Parsec.Token as PP
-       (braces, makeTokenParser, commaSep)
-import Text.Parsec.Language (emptyDef)
-import Text.Parsec.Token (GenTokenParser)
-import Data.Functor.Identity (Identity(..))
 
 -----------------------------------------------------------------------------
 -- * Binary tree class and a Zipper on it
 -----------------------------------------------------------------------------
 
------------------------------------------------------------------------------
--- ** A class for printing and parsing
------------------------------------------------------------------------------
-
-class PP t where
-    pp :: t -> Doc
-    pparser :: PP.Parser t
-
-    pps :: t -> String
-    pps = renderStyle style . pp
-    ppsh :: t -> ShowS
-    ppsh = showString . pps
-    ppsNoNewline :: t -> String
-    ppsNoNewline = renderStyle style{mode = OneLineMode} . pp
-
-    pparseError :: String -> Either PP.ParseError t
-    pparseError = PP.parse pparser ""
-    pparse :: String -> t
-    pparse str = case pparseError str of
-                    Left err -> error (show err)
-                    Right t  -> t
-
-instance PP t => PP (Maybe t) where
-    pp Nothing = text "Nothing"
-    pp (Just t) = pp t
-    pparser = parseMaybe pparser
-
-instance PP t => PP [t] where
-    pp [] = text "[]"
-    pp l = braces (vcat (punctuate (text ",") (map pp l)))
-    pparser = parseList pparser
-
-parseMaybe :: PP.Parser t -> PP.Parser (Maybe t)
-parseMaybe parser = do
-        v <- parser
-        return (Just v)
-    PP.<|> return Nothing
-    PP.<?> "parseMaybe"
-
-parseList :: PP.Parser t -> PP.Parser [t]
-parseList parser = do
-        braces' (commaSep' parser)
-    PP.<?> "parseList"
-
-lexer :: GenTokenParser String u Identity
-lexer = PP.makeTokenParser emptyDef
-
-braces' :: PP.Parser a -> PP.Parser a
-braces'     = PP.braces     lexer
-
-commaSep' :: PP.Parser a -> PP.Parser [a]
-commaSep'   = PP.commaSep   lexer
 
 
 -----------------------------------------------------------------------------

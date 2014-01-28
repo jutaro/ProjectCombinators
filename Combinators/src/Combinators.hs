@@ -14,6 +14,7 @@
 
 module Combinators (
     module Combinators.Variable
+    ,module Combinators.PrintingParsing
     ,module Combinators.BinaryTree
     ,module Combinators.Reduction
     ,module Combinators.Combinator
@@ -31,6 +32,7 @@ module Combinators (
 
 where
 
+import Combinators.PrintingParsing
 import Combinators.Variable
 import Combinators.BinaryTree
 import Combinators.Reduction

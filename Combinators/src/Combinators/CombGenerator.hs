@@ -19,6 +19,7 @@ import Combinators.BinaryTree
 import Data.Array.Unboxed
 import Control.Monad (replicateM)
 import Data.List (findIndex, foldl')
+import Combinators.PrintingParsing (PP)
 
 -----------------------------------------------------------------------------
 -- * Generation/Enumerations of Combinators with rank, unrank and length functions
