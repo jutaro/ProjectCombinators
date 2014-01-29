@@ -12,8 +12,7 @@
 --
 -----------------------------------------------------------------------------
 
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleInstances, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Combinators.LambdaTypedTest (
@@ -30,7 +29,7 @@ import Combinators.Variable (VarString)
 import Test.Framework (Test)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.Framework.Providers.HUnit (testCase)
-import Test.HUnit ((@=?), Assertion)
+import Test.HUnit ((@?=), Assertion)
 
 import Test.QuickCheck (Arbitrary)
 import Test.QuickCheck.Arbitrary (Arbitrary(..))
@@ -48,6 +47,9 @@ testLambdaTyped = [testCase "testInhabitant1" testInhabitant1
                 , testCase "testInhabitant6" testInhabitant6
                 , testCase "testInhabitant7" testInhabitant7
                 , testCase "testInhabitant8" testInhabitant8
+                , testCase "testInhabitant9" testInhabitant9
+                , testCase "testInhabitant10" testInhabitant10
+                , testCase "testInhabitant11" testInhabitant11
                 , testProperty "prop_printParse" prop_printParse
              ]
 
@@ -72,7 +74,7 @@ testInhabitant1 =
     let typeString = "a -> a"
         tst = (pparse :: String -> SType) typeString
         inh = inhabitants tst 5
-    in inh @=? (pparse :: String -> [LTerm VarString SType]) "[\\u:a.u]"
+    in inh @?= (pparse :: String -> [LTerm VarString SType]) "[\\u:a.u]"
 
 -- | Cancellator
 testInhabitant2 :: Assertion
@@ -80,7 +82,7 @@ testInhabitant2 =
     let typeString = "a -> a -> a"
         tst = (pparse :: String -> SType) typeString
         inh = inhabitants tst 5
-    in sort inh @=? sort ((pparse :: String -> [LTerm VarString SType]) "[\\u:a v:a.u, \\u:a v:a.v]")
+    in sort inh @?= sort ((pparse :: String -> [LTerm VarString SType]) "[\\u:a v:a.u, \\u:a v:a.v]")
 
 -- |
 testInhabitant3 :: Assertion
@@ -88,7 +90,7 @@ testInhabitant3 =
     let typeString = "a -> ((c -> b) -> a) -> b -> a"
         tst = (pparse :: String -> SType) typeString
         inh = inhabitants tst 5
-    in sort inh @=? sort ((pparse :: String -> [LTerm VarString SType])
+    in sort inh @?= sort ((pparse :: String -> [LTerm VarString SType])
         "[\\u:a v:(c -> b) -> a w:b.a,\\u:a v:(c -> b) -> a w:b.v(\\x:c.w)]")
 
 -- | Pierces Law
@@ -97,7 +99,7 @@ testInhabitant4 =
     let typeString = "((a -> b) -> a) -> a"
         tst = (pparse :: String -> SType) typeString
         inh = inhabitants tst 5
-    in sort inh @=? []
+    in sort inh @?= []
 
 -- | Church Numerals
 testInhabitant5 :: Assertion
@@ -105,7 +107,7 @@ testInhabitant5 =
     let typeString = "(a -> a) -> a -> a"
         tst = (pparse :: String -> SType) typeString
         inh = inhabitants tst 3
-    in sort inh @=? sort ((pparse :: String -> [LTerm VarString SType])
+    in sort inh @?= sort ((pparse :: String -> [LTerm VarString SType])
                         "[\\u:a -> a v:a.v,\n \\u:a -> a v:a.u v,\n \\u:a -> a v:a.u (u v)]")
 
 -- | Words over alphabet
@@ -114,7 +116,7 @@ testInhabitant6 =
     let typeString = "(a -> a) -> (a -> a) -> a -> a"
         tst = (pparse :: String -> SType) typeString
         inh = inhabitants tst 3
-    in sort inh @=? sort ((pparse :: String -> [LTerm VarString SType])
+    in sort inh @?= sort ((pparse :: String -> [LTerm VarString SType])
                         ("[\\u:a -> a v:a -> a w:a.w,"
                          ++ "\\u:a -> a v:a -> a w:a.v w,"
                          ++ "\\u:a -> a v:a -> a w:a.u w,"
@@ -129,8 +131,8 @@ testInhabitant7 =
     let typeString = "(a -> b -> c) -> b -> a -> c"
         tst = (pparse :: String -> SType) typeString
         inh = inhabitants tst 3
-    in inh @=? ((pparse :: String -> [LTerm VarString SType])
-                        "[\\u:a -> b -> c v:b w:a.u v v]")
+    in inh @?= ((pparse :: String -> [LTerm VarString SType])
+                        "[\\u:a -> b -> c v:b w:a.u w v]")
 
 -- | New binder
 testInhabitant8 :: Assertion
@@ -138,7 +140,7 @@ testInhabitant8 =
     let typeString = "((a -> a) -> a) -> a"
         tst = (pparse :: String -> SType) typeString
         inh = inhabitants tst 4
-    in sort inh @=? sort ((pparse :: String -> [LTerm VarString SType])
+    in sort inh @?= sort ((pparse :: String -> [LTerm VarString SType])
                         ("[\\u:(a -> a) -> a.u \\v:a.v,"
                          ++ "\\u:(a -> a) -> a.u \\v:a.u \\w:a.w,"
                          ++ "\\u:(a -> a) -> a.u \\v:a.u \\w:a.v,"
@@ -146,17 +148,67 @@ testInhabitant8 =
                          ++ "\\u:(a -> a) -> a.u \\v:a.u \\w:a.u \\x:a.w,"
                          ++ "\\u:(a -> a) -> a.u \\v:a.u \\w:a.u \\x:a.v]"))
 
--- | Monster
+-- | Monster M
 testInhabitant9 :: Assertion
 testInhabitant9 =
     let typeString = "(((a -> a) -> a) -> a) -> a -> a"
         tst = (pparse :: String -> SType) typeString
         inh = inhabitants tst 4
-    in sort inh @=? sort ((pparse :: String -> [LTerm VarString SType])
-                        ("[\\u:(a -> a) -> a.u \\v:a.v,"
-                         ++ "\\u:(a -> a) -> a.u \\v:a.u \\w:a.w,"
-                         ++ "\\u:(a -> a) -> a.u \\v:a.u \\w:a.v,"
-                         ++ "\\u:(a -> a) -> a.u \\v:a.u \\w:a.u \\x:a.x,"
-                         ++ "\\u:(a -> a) -> a.u \\v:a.u \\w:a.u \\x:a.w,"
-                         ++ "\\u:(a -> a) -> a.u \\v:a.u \\w:a.u \\x:a.v]"))
+    in sort inh @?= sort ((pparse :: String -> [LTerm VarString SType])
+                        ("[\\u:((a -> a) -> a) -> a v:a.u \\w:a -> a.u \\x:a -> a.u \\y:a -> a.v,"
+                         ++ "\\u:((a -> a) -> a) -> a v:a.v,"
+                         ++ "\\u:((a -> a) -> a) -> a v:a.u \\w:a -> a.v,"
+                         ++ "\\u:((a -> a) -> a) -> a v:a.u \\w:a -> a.w (u \\x:a -> a.v),"
+                         ++ "\\u:((a -> a) -> a) -> a v:a.u \\w:a -> a.u \\x:a -> a.v,"
+                         ++ "\\u:((a -> a) -> a) -> a v:a.u \\w:a -> a.w v,"
+                         ++ "\\u:((a -> a) -> a) -> a v:a.u \\w:a -> a.u \\x:a -> a.w v,"
+                         ++ "\\u:((a -> a) -> a) -> a v:a.u \\w:a -> a.w (w v),"
+                         ++ "\\u:((a -> a) -> a) -> a v:a.u \\w:a -> a.u \\x:a -> a.x v]"))
+
+-- | Binary Tree
+testInhabitant10 :: Assertion
+testInhabitant10 =
+    let typeString = "(a -> a -> a) -> a -> a"
+        tst = (pparse :: String -> SType) typeString
+        inh = inhabitants tst 4
+    in sort inh @?= sort ((pparse :: String -> [LTerm VarString SType])
+                        ("[\\u:a -> a -> a v:a.v,"
+                         ++ "\\u:a -> a -> a v:a.u v v,"
+                         ++ "\\u:a -> a -> a v:a.u v (u v v),"
+                         ++ "\\u:a -> a -> a v:a.u v (u v (u v v)),"
+                         ++ "\\u:a -> a -> a v:a.u v (u (u v v) v),"
+                         ++ "\\u:a -> a -> a v:a.u v (u (u v v) (u v v)),"
+                         ++ "\\u:a -> a -> a v:a.u (u v v) v,"
+                         ++ "\\u:a -> a -> a v:a.u (u v v) (u v v),"
+                         ++ "\\u:a -> a -> a v:a.u (u v v) (u v (u v v)),"
+                         ++ "\\u:a -> a -> a v:a.u (u v v) (u (u v v) v),"
+                         ++ "\\u:a -> a -> a v:a.u (u v v) (u (u v v) (u v v)),"
+                         ++ "\\u:a -> a -> a v:a.u (u v (u v v)) v,"
+                         ++ "\\u:a -> a -> a v:a.u (u v (u v v)) (u v v),"
+                         ++ "\\u:a -> a -> a v:a.u (u v (u v v)) (u v (u v v)),"
+                         ++ "\\u:a -> a -> a v:a.u (u v (u v v)) (u (u v v) v),"
+                         ++ "\\u:a -> a -> a v:a.u (u v (u v v)) (u (u v v) (u v v)),"
+                         ++ "\\u:a -> a -> a v:a.u (u (u v v) v) v,"
+                         ++ "\\u:a -> a -> a v:a.u (u (u v v) v) (u v v),"
+                         ++ "\\u:a -> a -> a v:a.u (u (u v v) v) (u v (u v v)),"
+                         ++ "\\u:a -> a -> a v:a.u (u (u v v) v) (u (u v v) v),"
+                         ++ "\\u:a -> a -> a v:a.u (u (u v v) v) (u (u v v) (u v v)),"
+                         ++ "\\u:a -> a -> a v:a.u (u (u v v) (u v v)) v,"
+                         ++ "\\u:a -> a -> a v:a.u (u (u v v) (u v v)) (u v v),"
+                         ++ "\\u:a -> a -> a v:a.u (u (u v v) (u v v)) (u v (u v v)),"
+                         ++ "\\u:a -> a -> a v:a.u (u (u v v) (u v v)) (u (u v v) v),"
+                         ++ "\\u:a -> a -> a v:a.u (u (u v v) (u v v)) (u (u v v) (u v v))]"))
+
+-- | Lambda terms L
+testInhabitant11 :: Assertion
+testInhabitant11 =
+    let typeString = "(a -> a -> a) -> ((a -> a) -> a) -> a"
+        tst = (pparse :: String -> SType) typeString
+        inh = inhabitants tst 3
+    in sort inh @?= sort ((pparse :: String -> [LTerm VarString SType])
+                        ("[\\u:a -> a -> a v:(a -> a) -> a.u (v \\w:a.w) (v \\w:a.w),"
+                         ++ "\\u:a -> a -> a v:(a -> a) -> a.v \\w:a.u w w,"
+                         ++ "\\u:a -> a -> a v:(a -> a) -> a.v \\w:a.v \\x:a.w,"
+                         ++ "\\u:a -> a -> a v:(a -> a) -> a.v \\w:a.w,"
+                         ++ "\\u:a -> a -> a v:(a -> a) -> a.v \\w:a.v \\x:a.x]"))
 

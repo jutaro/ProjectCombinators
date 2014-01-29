@@ -38,7 +38,7 @@ import qualified Text.PrettyPrint as PP
 import Text.Parsec.String (Parser)
 import qualified Text.Parsec as PA
 
-import Data.List (transpose)
+import Data.List (transpose,foldl')
 import Debug.Trace (trace)
 import Combinators.PrintingParsing (PP(..), parens', symbol', dot', colon')
 
@@ -231,25 +231,28 @@ reconstructType traceIt (index,env) t =
 -----------------------------------------------------------------------------
 -- ** Type inhabitation for simple types
 
-type InhContext = (Int,TypeContext VarString,[(Int,[LTerm VarString SType])])
+type InhContext = (Int,TypeContext VarString,[((Int,SType,TypeContext VarString),[LTerm VarString SType])])
 
 inhabitants :: SType -> Int -> [LTerm VarString SType]
 inhabitants st level = fst $ inhabitants' st (0,[],[]) level
 
 inhabitants', inhabitants'' :: SType -> InhContext ->  Int ->
         ([LTerm VarString SType],InhContext)
-inhabitants' st (i,cont,mem) level  = -- trace ("inhabitants type: " ++ pps st) $
-    case lookup level mem of
-        Just r -> (r,(i,cont,mem))
-        Nothing ->
-            let (res,(i',cont',mem')) = -- trace ("cont: " ++ show cont) $
-                    inhabitants'' st (i,cont,mem) level
-            in (res,(i',cont',(level,res):mem'))
+inhabitants' st (i,cont,mem) level  = --trace ("inhabitants type: " ++ pps st ++ " cont: " ++ show cont
+                                      --          ++ " level: " ++ show level) $
+    let res'@(r',(_i,cont',_mem)) = case lookup (level,st,cont) mem of
+                Just r -> (r,(i,cont,mem))
+                Nothing ->
+                    let (res,(i',cont',mem')) = -- trace ("cont: " ++ show cont) $
+                            inhabitants'' st (i,cont,mem) level
+                    in (res,(i',cont',((level,st,cont),res):mem'))
+    in -- trace ("inhabitants type: " ++ pps st ++ " res: " ++ pps r' ++ " cont': " ++ show cont') $
+        res'
 
 inhabitants'' (l :->: r)  (i,cont,mem) level =
     let name = nameGen !! i
-        (rec,(i',cont',mem')) = inhabitants' r (i+1,(name,l):cont,mem) level
-    in (map (LAbst name l :@:) rec,(i',cont',mem'))
+        (rec,(i',_cont',mem')) = inhabitants' r (i+1,(name,l):cont,mem) level
+    in (map (LAbst name l :@:) rec,(i,cont,mem'))
 
 inhabitants'' (SAtom s) (i,cont,mem) level
                                 | level == 0 = ([],(i,cont,mem))
@@ -257,18 +260,18 @@ inhabitants'' (SAtom s) (i,cont,mem) level
     let tupels = map (\ (v,t) -> (v,rightRest t))
                     $ (filter (\(_,t) -> resultType t == (SAtom s)))
                         cont
-        (res,(i',cont',mem')) = foldr (\(s,tl) (accu,(i',cont',mem')) ->
+        (res,(i',cont',mem')) = foldl (\ (accu,(i',cont',mem')) (s,tl) ->
                                     let (res,(i'',cont'',mem'')) =
-                                                foldr calc ([LVar s],(i',cont',mem')) tl
+                                                foldl calc ([LVar s],(i',cont',mem')) tl
                                     in (res : accu,(i'',cont'',mem'')))
                                         ([],(i,cont,mem)) tupels
     in (concat (transpose res),(i',cont',mem'))
 
   where
             -- for one tupel find solutions
-    calc :: SType -> ([LTerm VarString SType],InhContext) ->
-                        ([LTerm VarString SType],InhContext)
-    calc st (te,(i,cont,mem)) =
+--    calc :: SType -> ([LTerm VarString SType],InhContext) ->
+--                        ([LTerm VarString SType],InhContext)
+    calc (te,(i,cont,mem)) st  = -- trace ("calc type: " ++ pps st ++ " cont: " ++ show cont ) $
         let (te',(i',cont',mem')) = inhabitants' st (i,cont,mem) (level - 1)
         in ([l :@: r | l <- te , r <- te' ],(i',cont',mem'))
 
