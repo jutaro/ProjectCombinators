@@ -14,6 +14,7 @@ import Combinators.Combinator
 import Combinators.CombLambda
 import Combinators.Lambda
 import Combinators.Types (SType(..))
+import Combinators.Reduction (StringTerm(..))
 
 -----------------------------------------------------------------------------
 -- * Alternative bases for Combinatory logic
@@ -22,6 +23,7 @@ import Combinators.Types (SType(..))
 
 data IKS = IKS
 
+-- | The universal identity
 i :: Basis b => Combinator b
 i = Combinator "I" ["u#"] (Var ("u#"))
             (SAtom "a" :->: SAtom "a")
@@ -60,18 +62,21 @@ instance BracketAbstract IKS where
 -----------------------------------------------------------------------------
 -- ** IKBCW
 
--- | Definition of the combinators for the IKSBCW Basis
+-- | Definition of the combinators for the IKBCW Basis
 data IKBCW = IKBCW
 b,c,w :: Basis b => Combinator b
 
+-- | The universal compositor
 b = Combinator "B" ["u#","v#","w#"]
             (Var ("u#") :@ (Var ("v#") :@ Var ("w#")))
                 ((SAtom "a" :->: SAtom "b") :->: (SAtom "c" :->: SAtom "a") :->: SAtom "c" :->: SAtom "b")
 
+-- | The universal permutator
 c = Combinator "C" ["u#","v#","w#"]
             ((Var ("u#") :@ Var ("w#")) :@ Var ("v#"))
                 ((SAtom "a" :->: SAtom "b" :->: SAtom "c") :->: SAtom "b" :->: SAtom "a" :->: SAtom "c")
 
+-- | The universal duplicator
 w = Combinator "W" ["u#", "v#"]
             (Var ("u#") :@ Var ("v#") :@ Var ("v#"))
                 ((SAtom "a" :->: SAtom "a" :->: SAtom "b") :->: SAtom "a" :->: SAtom "b")
@@ -122,7 +127,7 @@ instance BracketAbstract IKBCW where
 -----------------------------------------------------------------------------
 -- ** KBCW
 
--- | Definition of the combinators for the IKSBCW Basis
+-- | Definition of the combinators for the KBCW Basis
 data KBCW = KBCW
 
 instance Basis KBCW where

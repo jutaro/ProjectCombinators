@@ -8,6 +8,9 @@
 -----------------------------------------------------------------------------
 
 module Combinators.Properties (
+-----------------------------------------------------------------------------
+-- * Properties of combinators
+-----------------------------------------------------------------------------
     isWeakNormal,
     arity,
     isWeakEqual,
@@ -58,7 +61,7 @@ isWeakEqual t1 t2 = do
     return (canonicalize t1r == canonicalize t2r)
 
 
--- | Is this combinator an identity combinator (like I) of any arity
+-- | Is this combinator an identity combinator (like I) of any arity?
 isIdentity :: Basis basis => Int -> CTerm basis -> Maybe Bool
 isIdentity arity term = do
     let vars     = map Var (take arity nameGen)
@@ -112,7 +115,8 @@ isPermutator i term = do
                                 (allSubterms outTerm)
     return (varList /= sort varList)
 
--- | Is this combinator a permutator?
+-- | Is this a regular combinator, which keeps its first argument in
+-- the leftmost place?
 isRegular :: Basis basis => Int -> CTerm basis -> Maybe Bool
 isRegular i _term | i <= 0 = Nothing
 isRegular i term = do
@@ -124,7 +128,8 @@ isRegular i term = do
         (hv2:_) | hv2 == hv -> return True
         _                  -> return False
 
--- | Is this combinator a permutator?
+-- | Is this combinator a proper combinator, where the reduction only consist
+-- of a combination of the input variables?
 isProper :: Basis basis => Int -> CTerm basis -> Maybe Bool
 isProper i term = do
     let vars     = map Var (take i nameGen)
@@ -137,6 +142,7 @@ isProper i term = do
                                 (allSubterms outTerm)
     return (null (nub varConstList \\ nub vars))
 
+-- | Is this combinator not a proper combinator?
 notProper :: Basis basis => Int -> CTerm basis -> Maybe Bool
 notProper i term = case isProper i term of
                     Nothing -> Nothing

@@ -60,16 +60,12 @@ import Combinators.PrintingParsing (PP(..),parens')
 -- | A 'Term' in combinatory logic is either
 --
 -- * a primitive combinator
--- * a variable
+--
+-- * a variable (always a StringVar)
+--
 -- * an application
 --
--- Two problems here:
--- * How to represent a combinatory Basis?
---     we choose to parametrize on the type of basis, which is a something of class Basis
---
--- * How to represent variables? Do we prefer Strings or de Bruijn?
---      we choose to parametrize on the type of variables, which is a something of class Variable
-
+-- We parametrize on the type of basis, which needs t be an instance of 'Basis'
 data CTerm basis where
     Const :: Basis basis => ! (Combinator basis) -> CTerm basis
     Var   :: ! VarString -> CTerm basis
@@ -90,7 +86,7 @@ instance Basis basis => Term (CTerm basis) where
     isTerminal _                = False
     canonicalize                = canonicalizeCTerm
 
-instance Basis basis => TermString (CTerm basis) where
+instance Basis basis => StringTerm (CTerm basis) where
     occurs v (Var n)                      = v == n
     occurs v (l :@ r)                     = occurs v l || occurs v r
     occurs _v (Const _)                   = False
@@ -115,13 +111,11 @@ class Basis basis where
 --
 --  * a name
 --
---  * an axiom, represented by
+--  * a list of variables, representing the arguments
 --
+--  * a reduct, which together with the variables gives its axiom
 --
---      * a list of variables, representing the arguments
---
---      * a term, in which the variables will be replaced
---
+--  * a simple type, if it is typeable
 data Combinator basis where
     Combinator :: (Basis basis) =>
         {combName   :: ! String, -- ^ needs to start with upper case character
@@ -167,8 +161,10 @@ canonicalizeCTerm' i env (l :@ r) =
 
 data KS = KS
 k,s :: Basis b => Combinator b
+-- | The universal Cancellator
 k = Combinator "K" ["u#", "v#"] (Var ("u#"))
             (SAtom "a" :->: SAtom "b" :->: SAtom "a")
+-- | The universal Fusion
 s = Combinator "S" ["u#", "v#", "w#"]
             (Var ("u#") :@ Var ("w#") :@
             (Var ("v#") :@ Var ("w#")))
@@ -284,13 +280,16 @@ isApp _ = False
 -----------------------------------------------------------------------------
 -- ** Reduction
 
+-- | Pair of redexHead and redexArgs
 type Redex basis v = (Combinator basis, [CTerm basis])
 
 -- | A term is a redex,  if
+--
 --      * the head is a primitive combinator
+--
 --      * the number of args are equal or greater then the arity of the primitive combinator
 --
---   Returns just a pair of redexHead and redexArgs, when the term is an redex.
+--   Returns just a Redex , when the term is an redex.
 --   Returns Nothing, if the input term is not a redex
 redex :: Basis basis => CTerm basis -> Maybe (Redex basis v)
 redex = redex' []
@@ -336,17 +335,4 @@ applyCombinator (zipper,(comb,args)) =
                                     then replaced
                                     else foldl (:@) replaced (drop (primArity comb) args)}
 
------------------------------------------------------------------------------
--- ** Convenience
-
--- | Normal order reduction for a term.
---
---  This is not guaranteed to terminate.
---normalOrderReduction :: Basis basis => CTerm basis -> CTerm basis
---normalOrderReduction = reduceIt instrumentedContext NormalForm
-
---
----- | Takes a string, parses it, applies normalOrderReduction and prints the result.
---strReduction :: String -> String
---strReduction = pp . normalOrderReduction . parseKS
 

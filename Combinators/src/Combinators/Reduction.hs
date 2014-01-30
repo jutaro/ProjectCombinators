@@ -18,20 +18,22 @@ module Combinators.Reduction (
 -----------------------------------------------------------------------------
 -----------------------------------------------------------------------------
 -- ** Reduction Strategies
-    NormalForm(..),
-    HeadNormalForm(..),
     Strategy,
+    NormalOrder(..),
+    HeadNormalOrder(..),
 -----------------------------------------------------------------------------
 -- ** Reduction Context
     ReductionContext(..),
-    NullContext,
+--    NullContext,
     nullContext,
-    InstrumentedContext,
+--    InstrumentedContext,
     instrumentedContext,
 -----------------------------------------------------------------------------
--- ** Term, and abstract Reduction with convenience functions
+-- ** Terms and StringTerm
     Term(..),
-    TermString(..),
+    StringTerm(..),
+-----------------------------------------------------------------------------
+-- ** Reductions and convenience function
     Reduction (..),
     reduce,
     reduceS,
@@ -65,10 +67,10 @@ class Strategy s where
     -- ^ Constructs a tree from its left and right subparts
 
 
--- | Normal form means reduction of all redexes
-data NormalForm = NormalForm
+-- | Normal order means reduction of all redexes
+data NormalOrder = NormalOrder
 
-instance Strategy NormalForm where
+instance Strategy NormalOrder where
     reduce' strategy zipper = do
         startReduction zipper
         reduce'' zipper
@@ -87,10 +89,10 @@ instance Strategy NormalForm where
                 Nothing -> liftM Just (stopReduction zipper)
 
 
--- | Head normal form means reduction of all head redexes
-data HeadNormalForm = HeadNormalForm
+-- | Head normal order means reduction of the head redex as far as possible
+data HeadNormalOrder = HeadNormalOrder
 
-instance Strategy HeadNormalForm where
+instance Strategy HeadNormalOrder where
     reduce' strategy zipper = do
         startReduction zipper
         reduce'' zipper
@@ -110,20 +112,32 @@ instance Strategy HeadNormalForm where
                                 Nothing -> liftM Just (stopReduction zipper)
                                 Just z ->  reduce'' z
 
+goUp :: BinaryTree t => BTZipper t -> Maybe (BTZipper t)
+goUp z = case zipUpLeft z of
+            Nothing -> case zipUpRight z of
+                        Nothing -> Nothing
+                        Just z' -> zipDownRight z'
+            Just z -> goUp z
 
 -----------------------------------------------------------------------------
 -- ** Reduction Context
 
+-- | A reduction context serves to instrument a reduction e.g. with tracing,
+-- cycle detection or maximum reduction step counting.
 class (Monad c, BinaryTree t, PP t) => ReductionContext c t where
     runContext :: Int -> c (Maybe t) -> (Maybe t,ShowS,Int,[t])
+    -- ^ run this context
     startReduction :: () => (BTZipper t) -> c (BTZipper t)
+    -- ^ This is invoked at the start of a reduction sequence
     stepReduction :: (BinaryTree t, PP t) => (BTZipper t) -> c (Maybe (BTZipper t))
+    -- ^ This is invoked for every step of a reduction sequence
     stopReduction :: (BinaryTree t, PP t) => (BTZipper t) -> c (BTZipper t)
-
+    -- ^ This is invoked at the end of a reduction sequence
 
 
 -----------------------------------------------------------------------------
 -- *** Null Context
+
 type NullContext = Identity
 
 instance (PP t, BinaryTree t) => ReductionContext Identity t where
@@ -132,7 +146,8 @@ instance (PP t, BinaryTree t) => ReductionContext Identity t where
     stepReduction tz = return (Just tz)
     stopReduction tz = return tz
 
-nullContext :: Identity (Maybe a)
+-- | A context which does nothing
+nullContext :: NullContext (Maybe a)
 nullContext = Identity Nothing
 
 -----------------------------------------------------------------------------
@@ -182,6 +197,13 @@ instance (PP t, BinaryTree t, Ord t) => ReductionContext (InstrumentedContext t)
 
 type InstrumentedContext t = State (ShowS,Int,Int,Set.Set t,[t])
 
+-- | A context which handles
+--
+-- * a maximum number of reductions
+--
+-- * can detect cycles in reductions
+--
+-- * can return (trace) the reductions happened
 instrumentedContext :: InstrumentedContext t (Maybe t)
 instrumentedContext = state (\ s -> (Nothing,s))
 
@@ -189,19 +211,25 @@ maxcount :: Int
 maxcount = 150
 
 -----------------------------------------------------------------------------
--- ** Term, and abstract Reduction with convenience functions
------------------------------------------------------------------------------
+-- ** Terms and StringTerm
 
 class (BinaryTree t, Ord t, Eq t) => Term t where
     isTerminal :: t -> Bool
     -- ^ This information is used for reduction
     canonicalize :: t -> t
+    -- ^ Convert this term to a canonical form
 
-class BinaryTree t => TermString t where
+class Term t => StringTerm t where
     occurs :: VarString -> t -> Bool
     -- ^ Does variable v occurst in the term?
     freeVars :: t -> [VarString]
-    -- | Returns a list of free Vars in the term
+    -- ^ Returns a list of free Vars in the term
+    isClosed :: t -> Bool
+    isClosed = null . freeVars
+    -- ^ Is this a closed term, which means it has no free variables?
+
+-----------------------------------------------------------------------------
+-- ** Reductions and convenience function
 
 -- | A term is a binary tree, which can be reduced one or many times.
 class (ReductionContext c t, BinaryTree t , PP t, Strategy s) => Reduction t s c where
@@ -209,9 +237,9 @@ class (ReductionContext c t, BinaryTree t , PP t, Strategy s) => Reduction t s c
     -- ^ One step reduction. Returns Left t if possible, or Right t with the original term,
     --   if no reduction was possible
 
-
-
---  This is not guaranteed to terminate.
+-- | Many step reduction of term t, in context c with strategy s with max n steps.
+--
+-- This is not guaranteed to terminate.
 reduce :: forall c t s. (ReductionContext c t, Reduction t s c) => c (Maybe t) -> s -> Int -> t ->
                             (Maybe t,ShowS,Int,[t])
 reduce _c s n t =  (runContext :: Int -> c (Maybe t) ->  (Maybe t,ShowS,Int,[t])) n (reduceCont s t)
@@ -222,17 +250,20 @@ reduce _c s n t =  (runContext :: Int -> c (Maybe t) ->  (Maybe t,ShowS,Int,[t])
             Just t' -> return $ Just (unzipper t')
             Nothing -> return $ Nothing
 
-reduceS :: (Reduction t NormalForm (InstrumentedContext t), Term t) =>  t -> Maybe t
-reduceS = (\(a,_,_,_) -> a) . reduce instrumentedContext NormalForm maxcount
+-- | Many step reduction of term t in NormalOrder with an instrumented context
+reduceS :: (Reduction t NormalOrder (InstrumentedContext t), Term t) =>  t -> Maybe t
+reduceS = (\(a,_,_,_) -> a) . reduce instrumentedContext NormalOrder maxcount
 
-reduceSForce :: (Reduction t NormalForm (InstrumentedContext t), Term t) => t -> t
-reduceSForce t = case reduce instrumentedContext NormalForm maxcount t of
+-- | Many step reduction of term t in NormalOrder with an instrumented context
+--
+-- Throws an error if cycles are detected or maxcount reductions are reached
+reduceSForce :: (Reduction t NormalOrder (InstrumentedContext t), Term t) => t -> t
+reduceSForce t = case reduce instrumentedContext NormalOrder maxcount t of
                         (Just t',_,_,_) -> t'
                         (Nothing,s,_,_) -> error ("Term>>reduceIt: " ++  (s ""))
 
---
 
---  This is not guaranteed to terminate.
+-- | Single step reduction of term t, in context c with strategy s with max n steps.
 reduceOnce :: forall t s c . Reduction t s c =>  c (Maybe t) -> s -> t -> (Maybe t,ShowS,Int,[t])
 reduceOnce _c strategy t = (runContext :: Int -> c (Maybe t) ->  (Maybe t,ShowS,Int,[t])) maxcount
                                 (reduceOnceCont strategy t)
@@ -243,5 +274,6 @@ reduceOnce _c strategy t = (runContext :: Int -> c (Maybe t) ->  (Maybe t,ShowS,
             Just t' -> return (Just (unzipper t'))
             Nothing -> return Nothing
 
-reduceOnceS :: (Reduction t NormalForm (InstrumentedContext t), Term t) =>  t -> Maybe t
-reduceOnceS = (\(a,_,_,_) -> a) . reduceOnce instrumentedContext NormalForm
+-- | Single step reduction of term t in NormalOrder with an instrumented context
+reduceOnceS :: (Reduction t NormalOrder (InstrumentedContext t), Term t) =>  t -> Maybe t
+reduceOnceS = (\(a,_,_,_) -> a) . reduceOnce instrumentedContext NormalOrder

@@ -21,14 +21,9 @@ module Combinators.Lambda (
 -----------------------------------------------------------------------------
 -- ** LTerm type
     LTerm(..),
-    Untyped(..),
-    Typed,
 -----------------------------------------------------------------------------
 -- ** Properties
-    occurs,
-    freeVars,
     boundVars,
-    isClosed,
     arityLambda,
 -----------------------------------------------------------------------------
 -- ** Convenience
@@ -64,7 +59,9 @@ import Combinators.PrintingParsing (PP(..), parens',symbol',dot')
 -- | A 'Term' in (untyped) lambda calculus is either
 --
 -- * a variable
+--
 -- * an application
+--
 -- * a lambda abstraction
 --
 -- We choose to parametrize on the type of variables, which is a something of class Variable.
@@ -77,13 +74,13 @@ import Combinators.PrintingParsing (PP(..), parens',symbol',dot')
 -- of a binary tree, with the burden always to handle the error case of a lonely abstration
 
 data LTerm v t where
-      LVar ::  Variable v => v -> LTerm v t
-      LAbst :: Typed t => VarString -> t -> LTerm v t
-      (:@:) :: Variable v => LTerm v t -> LTerm v t -> LTerm v t
+      LVar ::  (Variable v, Ord t) => v -> LTerm v t
+      LAbst :: (Typed t, Ord t) => VarString -> t -> LTerm v t
+      (:@:) :: (Variable v, Ord t) => LTerm v t -> LTerm v t -> LTerm v t
 
 deriving instance Show t => Show (LTerm v t)
 
-instance Eq (LTerm VarString t) where
+instance Ord t => Eq (LTerm VarString t) where
     a == b = toLambdaB a == toLambdaB b
 
 instance Ord t => Ord (LTerm VarString t) where
@@ -115,7 +112,7 @@ compare' a b = check a b
         tag (LAbst{}) = 1 :: Int
         tag ((:@:){}) = 2 :: Int
 
-instance Variable v => BinaryTree (LTerm v t) where
+instance (Variable v, Ord t) => BinaryTree (LTerm v t) where
     decompose (tl :@: tr) = Just (tl,tr)
     decompose _ = Nothing
     tl @@ tr = tl :@: tr
@@ -139,7 +136,7 @@ instance Ord t => Term (LTerm VarString t) where
     isTerminal _                = False
     canonicalize                = canonicalizeLambda
 
-instance TermString (LTerm VarString t) where
+instance Ord t => StringTerm (LTerm VarString t) where
     occurs v (LVar n)                      = v == n
     occurs v (LAbst n _ :@: t) | v == n     = False
                              | otherwise   = occurs v t
@@ -224,12 +221,8 @@ boundVars (LAbst n _ :@: t) = n : boundVars t
 boundVars (l :@: r)         = boundVars l ++ boundVars r
 boundVars (LAbst n _)       = error $ "CombLambda>>freeVars: Lonely Abstraction " ++ show n
 
--- | Is this a closed term, which means it has no free variables?
-isClosed :: LTerm VarString t -> Bool
-isClosed = null . freeVars
-
 -- | Give canonical variable names for a term
-canonicalizeLambda :: LTerm VarString t -> LTerm VarString t
+canonicalizeLambda :: Ord t => LTerm VarString t -> LTerm VarString t
 canonicalizeLambda t =
     let fvs = freeVars t
         env = zip fvs (map negate [0..])
@@ -270,6 +263,7 @@ canonicalizeLambdaB t = (\(_,_,t) -> t) $ canonicalizeLambdaB' 0 0 [] t
     canonicalizeLambdaB' _ _ _ (LAbst n _) =
         error $ "Lambda>>toLambdaB': Lonely Abstraction " ++ show n
 
+-- | The arity of a lambda term, which equals the number of abstractions it starts with
 arityLambda :: LTerm v t -> Int
 arityLambda te@(LAbst _ _ :@: _t) = arityLambda' te
   where
@@ -278,7 +272,7 @@ arityLambda te@(LAbst _ _ :@: _t) = arityLambda' te
 arityLambda (l :@: _r) = arityLambda l - 1
 arityLambda _ = 0
 
------------------------------------------------------------------------------n
+-----------------------------------------------------------------------------
 -- ** Substitution
 
 -- | The substitution of a variable "var" with a term "replace" in the matched term
@@ -292,7 +286,7 @@ substitutel var replace (x :@: y)                   = substitutel var replace x 
 substitutel _ _ (LAbst _ _)                         = error "Lambda>>substitutel: Lonely LAbst"
 
 -- | Substitution with alpha conversion
-subsititueAlpha  :: Show t => VarString -> LTerm VarString t -> LTerm VarString t -> LTerm VarString t
+subsititueAlpha  :: (Show t, Ord t) => VarString -> LTerm VarString t -> LTerm VarString t -> LTerm VarString t
 subsititueAlpha  var replace replaceIn =
     let freeVars'    = nub $ freeVars replace
         boundVars'   = nub $ boundVars replaceIn
@@ -325,7 +319,8 @@ renameBoundVar _ (_old,_new) (LAbst n _ty)         = error $ "CombLambda>>rename
 -----------------------------------------------------------------------------
 -- ** Reduction
 
-instance (Strategy s, ReductionContext c (LTerm VarString t), Show t)  => Reduction (LTerm VarString t) s c where
+instance (Strategy s, ReductionContext c (LTerm VarString t), Show t, Ord t)
+            => Reduction (LTerm VarString t) s c where
     reduceOnce' s zipper =
         case zipSelected zipper of
             (((LAbst v _) :@: b) :@: c)
@@ -360,7 +355,8 @@ reduceLambda = show . pp . reduceSForce . (pparse :: String -> LTerm VarInt Unty
 -----------------------------------------------------------------------------
 -- ** With de Bruijn indices
 
-toLambdaB :: LTerm VarString t -> LTerm VarInt t
+-- | Takes a lambda term with 'VarString' variables and returns a de Bruijn representation
+toLambdaB :: Ord t => LTerm VarString t -> LTerm VarInt t
 toLambdaB t =
     let fvs = freeVars t
     in toLambdaB' fvs t
@@ -375,6 +371,8 @@ toLambdaB t =
                                                 toLambdaB' env rt
     toLambdaB' _ (LAbst n _)            = error $ "Lambda>>toLambdaB': Lonely Abstraction " ++ show n
 
+
+-- | Takes a lambda term in de Bruijn representation and returns a term with 'VarString' variables
 fromLambdaB :: LTerm VarInt t -> LTerm VarString t
 fromLambdaB = fromLambdaB' []
   where

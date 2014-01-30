@@ -16,7 +16,7 @@ module Combinators.BinaryTree where
 import Data.Maybe (isNothing)
 
 -----------------------------------------------------------------------------
--- * Binary tree class and a Zipper on it
+-- * Binary tree class and a Zipper for it
 -----------------------------------------------------------------------------
 
 -----------------------------------------------------------------------------
@@ -31,13 +31,19 @@ class BinaryTree t where
     -- ^ Constructs a tree from its left and right subparts
     isLeaf :: t -> Bool
     isLeaf = isNothing . decompose
+    -- ^ Is this a leaf
 
--- | preorderLeaves
+-----------------------------------------------------------------------------
+-- ** Basic functions on binary trees
+-----------------------------------------------------------------------------
+
+-- | The leaves of the tree as a list in preorder
 preorderLeaves :: BinaryTree t => t -> [t]
 preorderLeaves t = case decompose t of
                     Just (l,r) -> preorderLeaves l ++ preorderLeaves r
                     Nothing -> [t]
 
+-- | The left spine of the tree as a list
 leftSpine :: BinaryTree t => t -> [t]
 leftSpine = reverse . spine'
   where
@@ -45,11 +51,13 @@ leftSpine = reverse . spine'
                 Just (l,r) -> (r : spine' l)
                 Nothing -> [t]
 
+-- | The length of the left spine of the tree
 leftSpineLength :: BinaryTree t => t -> Int
 leftSpineLength t = case decompose t of
                  Just (l,_r) ->  1 + leftSpineLength l
                  _ -> 1
 
+-- | The right spine of the tree as a list
 rightSpine :: BinaryTree t => t -> [t]
 rightSpine = reverse . spine'
   where
@@ -57,16 +65,19 @@ rightSpine = reverse . spine'
                 Just (l,r) -> (l : spine' r)
                 Nothing -> [t]
 
+-- | The length of the right spine of the tree
 rightSpineLength :: BinaryTree t => t -> Int
 rightSpineLength t = case decompose t of
                  Just (_l,r) ->  1 + rightSpineLength r
                  _ -> 1
 
+-- | The number of nodes of the tree
 nodeSize :: BinaryTree t => t -> Int
 nodeSize t = case decompose t of
                 Nothing -> 0
                 Just (l,r) -> 1 + nodeSize l + nodeSize r
 
+-- | The number of leaves of the tree
 leafSize :: BinaryTree t => t -> Int
 leafSize t = case decompose t of
                 Nothing -> 1
@@ -169,19 +180,14 @@ zipEnum zipper =  zipEnum' [] (Just (zipRoot zipper))
         in zipEnum' accu'' (zipDownRight zipper')
     zipEnum' accu Nothing = accu
 
-zipperGetPath :: BinaryTree t => BTZipper t -> [Int]
-zipperGetPath z = reverse (zipperGetPath' [] (reverse (zipAnchestors z)))
-  where
-    zipperGetPath' accu [] = accu
-    zipperGetPath' accu (Left term: rest)   = zipperGetPath' (leftSpineLength term:accu) rest
-    zipperGetPath' accu (Right _term: [])   = 0:accu
-    zipperGetPath' accu (Right _term: rest) = zipperGetPath' accu rest
+-- | Gets the current position in the zipper in a
+--zipperGetPath :: BinaryTree t => BTZipper t -> [Int]
+--zipperGetPath z = reverse (zipperGetPath' [] (reverse (zipAnchestors z)))
+--  where
+--    zipperGetPath' accu [] = accu
+--    zipperGetPath' accu (Left term: rest)   = zipperGetPath' (leftSpineLength term:accu) rest
+--    zipperGetPath' accu (Right _term: [])   = 0:accu
+--    zipperGetPath' accu (Right _term: rest) = zipperGetPath' accu rest
 
-goUp :: BinaryTree t => BTZipper t -> Maybe (BTZipper t)
-goUp z = case zipUpLeft z of
-            Nothing -> case zipUpRight z of
-                        Nothing -> Nothing
-                        Just z' -> zipDownRight z'
-            Just z -> goUp z
 
 

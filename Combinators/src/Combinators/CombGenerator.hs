@@ -11,7 +11,26 @@
 --
 -----------------------------------------------------------------------------
 
-module Combinators.CombGenerator where
+module Combinators.CombGenerator (
+-----------------------------------------------------------------------------
+-- * Generation/Enumerations of Combinators with rank, unrank and length functions
+-----------------------------------------------------------------------------
+    catalans,
+    genCombs,
+    genCombsN,
+    sizeGenCombsN,
+    rankComb,
+    unrankComb,
+-----------------------------------------------------------------------------
+-- ** Binary tree structs helper functions
+    BinaryTreeStruct,
+    printStruct,
+    genBinaryTreeStructs,
+    grankTreeStruct,
+    gunrankTreeStruct,
+    rankTreeStruct,
+    unrankTreeStruct
+) where
 
 import Combinators.Combinator
 import Combinators.BinaryTree
@@ -21,9 +40,6 @@ import Control.Monad (replicateM)
 import Data.List (findIndex, foldl')
 import Combinators.PrintingParsing (PP)
 
------------------------------------------------------------------------------
--- * Generation/Enumerations of Combinators with rank, unrank and length functions
------------------------------------------------------------------------------
 
 -- | Produces a list of catalan numbers
 catalans :: [Integer]
@@ -88,12 +104,12 @@ unrankTreeStruct n r = unrank' initialArray 1 (n-1) n r
                                 else unrank' (array // [(i,True)]) (i+1) (m-1) k r'
         | otherwise         = array
 
--- | Ranking for any number of internal noes
+-- | Ranking for any number of internal nodes
 grankTreeStruct :: BinaryTreeStruct -> Integer
 grankTreeStruct ts = let n = treeStructNodes ts
                      in (sum (take n catalans)) + rankTreeStruct ts
 
--- | Unranking for any number of internal noes
+-- | Unranking for any number of internal nodes
 gunrankTreeStruct :: Integer -> BinaryTreeStruct
 gunrankTreeStruct r = unrank 0 r
   where
@@ -154,7 +170,7 @@ sizeGenCombsN _ = map (\n -> (catalans !! n) * (fromIntegral (length primitiveCo
   where
     primitiveCombinators :: [Combinator b] = primCombs
 
--- | Ranking for any number of internal noes
+-- | Ranking for any number of internal nodes
 rankComb :: forall basis . Basis basis => CTerm basis -> Integer
 rankComb term = -- trace ("n: " ++ show n ++
 --                        " rank: " ++ show rankNum ++

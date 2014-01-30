@@ -11,17 +11,22 @@
 --
 -----------------------------------------------------------------------------
 
-module Combinators.CombLambda where
+module Combinators.CombLambda (
+-----------------------------------------------------------------------------
+-- * Back and forth between combinatory logic and lambda calculus
+-----------------------------------------------------------------------------
+    combToLambda,
+    BracketAbstract(..)
+
+) where
 
 
 import Combinators.Lambda
+import Combinators.Types
 import Combinators.Combinator
 import Combinators.Variable
 import Combinators.Reduction
 
------------------------------------------------------------------------------
--- * Comb Lambda - back and forth between combinatory logic and lamnbda calculus
------------------------------------------------------------------------------
 
 -- | Converts a term of combinatory logic into an untyped lambda term
 combToLambda :: CTerm basis -> LTerm VarString Untyped

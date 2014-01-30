@@ -16,7 +16,9 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Combinators.CombinatorTyped (
-    reconstructTypeC
+-----------------------------------------------------------------------------
+-- * Simple Types for combinators
+-----------------------------------------------------------------------------
 ) where
 
 import Combinators.Types
@@ -25,7 +27,7 @@ import Combinators.Types
 import Combinators.Combinator
        (Combinator(..), CTerm(..), CTerm, Basis)
 import Combinators.Variable (VarString)
-import Combinators.Reduction (TermString(..))
+import Combinators.Reduction (StringTerm(..))
 import Debug.Trace (trace)
 import Combinators.PrintingParsing (PP(..))
 

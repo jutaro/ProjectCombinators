@@ -16,24 +16,38 @@
     OverlappingInstances  #-}
 
 module Combinators.Types (
+-----------------------------------------------------------------------------
+-- * Simple Types
+-----------------------------------------------------------------------------
     SType(..),
     TypeAtom,
-    Typeable(..),
+-----------------------------------------------------------------------------
+-- ** Making types optional
     Typed,
     Untyped(..),
+-----------------------------------------------------------------------------
+-- ** Type inference
+    Typeable(..),
     typeVarGen,
+
+-----------------------------------------------------------------------------
+-- ** Type contexts and substitution
+    TypeContext,
     canonicalizeType,
     canonicalizeTypeContext,
-    TypeContext,
+-----------------------------------------------------------------------------
+-- ** Type substitution and unification
     Substitution,
     idSubstitution,
     substType,
     substContext,
     unifyTypes,
     unifyTypesR,
+-----------------------------------------------------------------------------
+-- ** Properties and helpers
     typeVars,
-    parseType,
-    arityType
+    arityType,
+    parseType
 ) where
 
 import Combinators.BinaryTree
@@ -114,7 +128,9 @@ class Typeable t where
     isTypeable t =  isJust (typeof' t)
     -- ^ Is this a typeable term
 
--- | Generate an endless stream of type variables
+-- | Generate an endless stream of type variables:
+--
+-- >> "a b c d e f g a1 b1 c1 d1 e1 f1 g1 a2 ..."
 typeVarGen :: [String]
 typeVarGen = [ c: n | n <- ("" : map show [(1:: Int)..]), c <- "abcdefg"]
 
@@ -178,7 +194,7 @@ sAtomParse = do
     PA.<?> "sAtom"
 
 -----------------------------------------------------------------------------
--- ** Type environment
+-- ** Type contexts
 
 -- | A type environment binds atomic types, represented as Strings to types.
 -- In this representation types may be unassigned

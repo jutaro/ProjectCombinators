@@ -17,10 +17,14 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Combinators.LambdaTyped (
+-----------------------------------------------------------------------------
+-- * Simple Types for lambda terms
+-----------------------------------------------------------------------------
     typeLambda,
     typeLambda',
     untypeLambda,
-    reconstructType,
+-----------------------------------------------------------------------------
+-- ** Lambda terms inhabitants for simple types
     inhabitants,
     inhabitants''
 ) where
@@ -41,6 +45,7 @@ import qualified Text.Parsec as PA
 import Data.List (transpose,foldl')
 import Debug.Trace (trace)
 import Combinators.PrintingParsing (PP(..), parens', symbol', dot', colon')
+import Combinators.Reduction (StringTerm(..))
 
 -----------------------------------------------------------------------------
 -- ** Lambda terms with simple types
@@ -168,7 +173,7 @@ typeLambda env term = case reconstructType False (length env,env) term of
                             Just (_,_,_,nt) -> Just $ nt
                             Nothing    -> Nothing
 
--- | Convert an untyped term to a typed term if possible
+-- | Convert an untyped term to a typed term if possible, generate any types for free variables
 typeLambda' :: LTerm VarString Untyped -> Maybe (LTerm VarString SType)
 typeLambda' term = let env = map (\(v,i) -> (v, SAtom (typeVarGen !! i))) $ zip (freeVars term) [0..]
                         in  typeLambda env term

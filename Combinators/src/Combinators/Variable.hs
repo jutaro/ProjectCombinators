@@ -20,25 +20,35 @@ import qualified Text.Parsec as PA ((<?>), noneOf, many, lower,spaces)
 -- * Variables
 -----------------------------------------------------------------------------
 
-
--- | A variable can be
+-- | An instance of variable can be:
 --
 -- * shown
+--
 -- * compared for equality
--- * ordered
+--
+-- * compared for order
+
 class (Show v, Eq v, Ord v) => Variable v where
 
 -----------------------------------------------------------------------------
 -- ** VarString
 
 -- | The representation of variables as strings
+--
+--   A string variable has to start with a lowercase letter.
+--   Followed by any character, which does not include:
+--
+-- > " :,;()[]\t\n\r\f\v."
 type VarString = String
 
 instance Variable VarString
 
+-- | Prints a variable, which is just identity
 varPp :: VarString -> String
 varPp = id
 
+-- | Parses a variable
+--
 varParse :: Parser VarString
 varParse = do
             start <- PA.lower
@@ -46,6 +56,18 @@ varParse = do
             PA.spaces
             return (start:rest)
         PA.<?> "varParse for SimpleVar"
+
+-- | Generates an infinite stream of variable names:
+--
+-- > [u,v,w,x,y,z,u1,v1,w1,x1,y1,z1,u2...]
+nameGen :: [String]
+nameGen = [ c: n | n <- ("" : map show [(1:: Int)..]), c <- "uvwxyz"]
+
+-- | Generates an infinite stream of variable names with a hyphen at the end:
+--
+-- > [u',v',w',x',y',z',u1',v1',w1',x1',y1',z1',u2'...]
+nameGenFV  :: [String]
+nameGenFV = map (++ "'") nameGen
 
 -----------------------------------------------------------------------------
 -- ** VarIndex
@@ -55,8 +77,4 @@ type VarInt = Int
 
 instance Variable VarInt
 
-nameGen :: [String]
-nameGen = [ c: n | n <- ("" : map show [(1:: Int)..]), c <- "uvwxyz"]
 
-nameGenFV  :: [String]
-nameGenFV = map (++ "'") nameGen
