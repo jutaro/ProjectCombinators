@@ -18,7 +18,7 @@ module Combinators.CombLambdaTest (
     testCombLambda
 ) where
 
-import Combinators.Combinator (KS, CTerm)
+import Combinators.Combinator (CTerm(..), KS, CTerm)
 import Combinators.CombinatorTest ()
 import Combinators.CombLambda (BracketAbstract(..), combToLambda)
 import Combinators.Reduction (Term(..), reduceS)
@@ -29,8 +29,10 @@ import Combinators.Types (Untyped(..))
 
 import Test.Framework (Test)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
-import Combinators.CombinatorBasis (IKBCW, IKS)
+import Combinators.CombinatorBasis (KBCW(..), IKBCW, IKS)
 import Combinators.PrintingParsing (PP, PP(..))
+import Test.HUnit ((@=?), Assertion)
+import Test.Framework.Providers.HUnit (testCase)
 
 trace :: a -> b -> b
 trace _a b = b
@@ -40,6 +42,22 @@ testCombLambda = [-- testProperty "prop_combToLambda" prop_combToLambda
                     testProperty "prop_LambdaToCombKS" prop_LambdaToCombKS
                   , testProperty "prop_LambdaToCombIKS" prop_LambdaToCombIKS
                   , testProperty "prop_LambdaToCombIKBCW" prop_LambdaToCombIKBCW
+                  , testCase "test_C_KBCW_Abst" test_C_KBCW_Abst
+                  , testCase "test_C_KS_Abst" test_C_KS_Abst
+                  , testCase "test_C_IKBCW_Abst" test_C_IKBCW_Abst
+                  , testCase "test_C_IKS_Abst" test_C_IKS_Abst
+                  , testCase "test_B_KBCW_Abst" test_B_KBCW_Abst
+                  , testCase "test_B_KS_Abst" test_B_KS_Abst
+                  , testCase "test_B_IKBCW_Abst" test_B_IKBCW_Abst
+                  , testCase "test_B_IKS_Abst" test_B_IKS_Abst
+                  , testCase "test_W_KBCW_Abst" test_W_KBCW_Abst
+                  , testCase "test_W_KS_Abst" test_W_KS_Abst
+                  , testCase "test_W_IKBCW_Abst" test_W_IKBCW_Abst
+                  , testCase "test_W_IKS_Abst" test_W_IKS_Abst
+                  , testCase "test_S_KBCW_Abst" test_S_KBCW_Abst
+                  , testCase "test_S_KS_Abst" test_S_KS_Abst
+                  , testCase "test_S_IKBCW_Abst" test_S_IKBCW_Abst
+                  , testCase "test_S_IKS_Abst" test_S_IKS_Abst
                  ]
 
 
@@ -103,6 +121,183 @@ prop_LambdaToCombIKBCW term = case prop of
         if lr == resRed
             then (trace' "prop_LambdaToCombIKBCW" lr cr resRed) $ return True
             else (trace' "prop_LambdaToCombIKBCW" lr cr resRed) $ return False
+
+-- B BCKW
+test_B_KBCW_Abst :: Assertion
+test_B_KBCW_Abst =
+    Just rterm @=? condReduced
+  where
+    lterm :: LTerm VarString Untyped = pparse "\\x y z.x (y z)"
+    rterm = pparse "x (y z)"
+    cterm :: CTerm KBCW     = bracketAbstract lterm
+    cterm'  = cterm :@ Var "x" :@ Var "y" :@ Var "z"
+    condReduced = reduceS cterm'
+
+-- B KS
+test_B_KS_Abst :: Assertion
+test_B_KS_Abst =
+    Just rterm @=? condReduced
+  where
+    lterm :: LTerm VarString Untyped = pparse "\\x y z.x (y z)"
+    rterm = pparse "x (y z)"
+    cterm :: CTerm KS     = bracketAbstract lterm
+    cterm'  = cterm :@ Var "x" :@ Var "y" :@ Var "z"
+    condReduced = reduceS cterm'
+
+-- B IKBCW
+test_B_IKBCW_Abst :: Assertion
+test_B_IKBCW_Abst =
+    Just rterm @=? condReduced
+  where
+    lterm :: LTerm VarString Untyped = pparse "\\x y z.x (y z)"
+    rterm = pparse "x (y z)"
+    cterm :: CTerm KBCW     = bracketAbstract lterm
+    cterm'  = cterm :@ Var "x" :@ Var "y" :@ Var "z"
+    condReduced = reduceS cterm'
+
+-- B IKS
+test_B_IKS_Abst :: Assertion
+test_B_IKS_Abst =
+    Just rterm @=? condReduced
+  where
+    lterm :: LTerm VarString Untyped = pparse "\\x y z.x (y z)"
+    rterm = pparse "x (y z)"
+    cterm :: CTerm IKS     = bracketAbstract lterm
+    cterm'  = cterm :@ Var "x" :@ Var "y" :@ Var "z"
+    condReduced = reduceS cterm'
+
+
+-- C KBCW
+test_C_KBCW_Abst :: Assertion
+test_C_KBCW_Abst =
+    Just rterm @=? condReduced
+  where
+    lterm :: LTerm VarString Untyped = pparse "\\x y z.x z y"
+    rterm = pparse "x z y"
+    cterm :: CTerm KBCW     = bracketAbstract lterm
+    cterm'  = cterm :@ Var "x" :@ Var "y" :@ Var "z"
+    condReduced = reduceS cterm'
+
+-- C KS
+test_C_KS_Abst :: Assertion
+test_C_KS_Abst =
+    Just rterm @=? condReduced
+  where
+    lterm :: LTerm VarString Untyped = pparse "\\x y z.x z y"
+    rterm = pparse "x z y"
+    cterm :: CTerm KS     = bracketAbstract lterm
+    cterm'  = cterm :@ Var "x" :@ Var "y" :@ Var "z"
+    condReduced = reduceS cterm'
+
+-- C IKBCW
+test_C_IKBCW_Abst :: Assertion
+test_C_IKBCW_Abst =
+    Just rterm @=? condReduced
+  where
+    lterm :: LTerm VarString Untyped = pparse "\\x y z.x z y"
+    rterm = pparse "x z y"
+    cterm :: CTerm IKBCW     = bracketAbstract lterm
+    cterm'  = cterm :@ Var "x" :@ Var "y" :@ Var "z"
+    condReduced = reduceS cterm'
+
+-- C IKS
+test_C_IKS_Abst :: Assertion
+test_C_IKS_Abst =
+    Just rterm @=? condReduced
+  where
+    lterm :: LTerm VarString Untyped = pparse "\\x y z.x z y"
+    rterm = pparse "x z y"
+    cterm :: CTerm IKS     = bracketAbstract lterm
+    cterm'  = cterm :@ Var "x" :@ Var "y" :@ Var "z"
+    condReduced = reduceS cterm'
+
+-- W KBCW
+test_W_KBCW_Abst :: Assertion
+test_W_KBCW_Abst =
+    Just rterm @=? condReduced
+  where
+    lterm :: LTerm VarString Untyped = pparse "\\x y. x y y"
+    rterm = pparse "x y y"
+    cterm :: CTerm KBCW     = bracketAbstract lterm
+    cterm'  = cterm :@ Var "x" :@ Var "y"
+    condReduced = reduceS cterm'
+
+-- W KS
+test_W_KS_Abst :: Assertion
+test_W_KS_Abst =
+    Just rterm @=? condReduced
+  where
+    lterm :: LTerm VarString Untyped = pparse "\\x y. x y y"
+    rterm = pparse "x y y"
+    cterm :: CTerm KS     = bracketAbstract lterm
+    cterm'  = cterm :@ Var "x" :@ Var "y"
+    condReduced = reduceS cterm'
+
+-- W IKBCW
+test_W_IKBCW_Abst :: Assertion
+test_W_IKBCW_Abst =
+    Just rterm @=? condReduced
+  where
+    lterm :: LTerm VarString Untyped = pparse "\\x y. x y y"
+    rterm = pparse "x y y"
+    cterm :: CTerm IKBCW     = bracketAbstract lterm
+    cterm'  = cterm :@ Var "x" :@ Var "y"
+    condReduced = reduceS cterm'
+
+-- W IKS
+test_W_IKS_Abst :: Assertion
+test_W_IKS_Abst =
+    Just rterm @=? condReduced
+  where
+    lterm :: LTerm VarString Untyped = pparse "\\x y. x y y"
+    rterm = pparse "x y y"
+    cterm :: CTerm IKS     = bracketAbstract lterm
+    cterm'  = cterm :@ Var "x" :@ Var "y"
+    condReduced = reduceS cterm'
+
+-- S KBCW
+test_S_KBCW_Abst :: Assertion
+test_S_KBCW_Abst =
+    Just rterm @=? condReduced
+  where
+    lterm :: LTerm VarString Untyped = pparse "\\x y z.x z (y z)"
+    rterm = pparse "x z (y z)"
+    cterm :: CTerm KBCW     = bracketAbstract lterm
+    cterm'  = cterm :@ Var "x" :@ Var "y" :@ Var "z"
+    condReduced = reduceS cterm'
+
+-- S KS
+test_S_KS_Abst :: Assertion
+test_S_KS_Abst =
+    Just rterm @=? condReduced
+  where
+    lterm :: LTerm VarString Untyped = pparse "\\x y z.x z (y z)"
+    rterm = pparse "x z (y z)"
+    cterm :: CTerm KS     = bracketAbstract lterm
+    cterm'  = cterm :@ Var "x" :@ Var "y" :@ Var "z"
+    condReduced = reduceS cterm'
+
+-- S IKBCW
+test_S_IKBCW_Abst :: Assertion
+test_S_IKBCW_Abst =
+    Just rterm @=? condReduced
+  where
+    lterm :: LTerm VarString Untyped = pparse "\\x y z.x z (y z)"
+    rterm = pparse "x z (y z)"
+    cterm :: CTerm IKBCW     = bracketAbstract lterm
+    cterm'  = cterm :@ Var "x" :@ Var "y" :@ Var "z"
+    condReduced = reduceS cterm'
+
+-- S IKS
+test_S_IKS_Abst :: Assertion
+test_S_IKS_Abst =
+    Just rterm @=? condReduced
+  where
+    lterm :: LTerm VarString Untyped = pparse "\\x y z.x z (y z)"
+    rterm = pparse "x z (y z)"
+    cterm :: CTerm IKS     = bracketAbstract lterm
+    cterm'  = cterm :@ Var "x" :@ Var "y" :@ Var "z"
+    condReduced = reduceS cterm'
 
 
 {- Not working in this form, maybe with reduction?

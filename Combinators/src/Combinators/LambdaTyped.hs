@@ -1,4 +1,3 @@
-{-# LANGUAGE ParallelListComp #-}
 -----------------------------------------------------------------------------
 --
 -- Module      :  Combinators.LambdaTyped
@@ -26,7 +25,7 @@ module Combinators.LambdaTyped (
 -----------------------------------------------------------------------------
 -- ** Lambda terms inhabitants for simple types
     inhabitants,
-    inhabitants''
+--    inhabitants''
 ) where
 
 import Combinators.BinaryTree
@@ -42,7 +41,7 @@ import qualified Text.PrettyPrint as PP
 import Text.Parsec.String (Parser)
 import qualified Text.Parsec as PA
 
-import Data.List (transpose,foldl')
+import Data.List (transpose)
 import Debug.Trace (trace)
 import Combinators.PrintingParsing (PP(..), parens', symbol', dot', colon')
 import Combinators.Reduction (StringTerm(..))
@@ -238,6 +237,7 @@ reconstructType traceIt (index,env) t =
 
 type InhContext = (Int,TypeContext VarString,[((Int,SType,TypeContext VarString),[LTerm VarString SType])])
 
+-- | Generates all inhabitants of the type with maximum level elements
 inhabitants :: SType -> Int -> [LTerm VarString SType]
 inhabitants st level = fst $ inhabitants' st (0,[],[]) level
 
@@ -245,7 +245,7 @@ inhabitants', inhabitants'' :: SType -> InhContext ->  Int ->
         ([LTerm VarString SType],InhContext)
 inhabitants' st (i,cont,mem) level  = --trace ("inhabitants type: " ++ pps st ++ " cont: " ++ show cont
                                       --          ++ " level: " ++ show level) $
-    let res'@(r',(_i,cont',_mem)) = case lookup (level,st,cont) mem of
+    let res'@(_r',(_i,_cont',_mem)) = case lookup (level,st,cont) mem of
                 Just r -> (r,(i,cont,mem))
                 Nothing ->
                     let (res,(i',cont',mem')) = -- trace ("cont: " ++ show cont) $
@@ -256,7 +256,7 @@ inhabitants' st (i,cont,mem) level  = --trace ("inhabitants type: " ++ pps st ++
 
 inhabitants'' (l :->: r)  (i,cont,mem) level =
     let name = nameGen !! i
-        (rec,(i',_cont',mem')) = inhabitants' r (i+1,(name,l):cont,mem) level
+        (rec,(_i',_cont',mem')) = inhabitants' r (i+1,(name,l):cont,mem) level
     in (map (LAbst name l :@:) rec,(i,cont,mem'))
 
 inhabitants'' (SAtom s) (i,cont,mem) level

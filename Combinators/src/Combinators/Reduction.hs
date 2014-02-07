@@ -37,6 +37,7 @@ module Combinators.Reduction (
     Reduction (..),
     reduce,
     reduceS,
+    reduceTrace,
     reduceSForce,
     reduceOnce,
     reduceOnceS
@@ -49,6 +50,7 @@ import Control.Monad.Trans.State
 import qualified Data.Set as Set (member, insert, empty, Set)
 import Combinators.Variable (VarString)
 import Combinators.PrintingParsing (PP(..), PP)
+import Debug.Trace (trace)
 
 
 -----------------------------------------------------------------------------
@@ -172,7 +174,7 @@ instance (PP t, BinaryTree t, Ord t) => ReductionContext (InstrumentedContext t)
                     maxc,
                     count + 1,
                     set,
-                    li))
+                    t:li))
                 return Nothing
             else if count + 1 > maxc
                 then do
@@ -181,7 +183,7 @@ instance (PP t, BinaryTree t, Ord t) => ReductionContext (InstrumentedContext t)
                         maxc,
                         count + 1,
                         set,
-                        li))
+                        t:li))
                     return Nothing
                 else do
                     modify (\(log,maxc,count,set,li) -> (
@@ -253,6 +255,11 @@ reduce _c s n t =  (runContext :: Int -> c (Maybe t) ->  (Maybe t,ShowS,Int,[t])
 -- | Many step reduction of term t in NormalOrder with an instrumented context
 reduceS :: (Reduction t NormalOrder (InstrumentedContext t), Term t) =>  t -> Maybe t
 reduceS = (\(a,_,_,_) -> a) . reduce instrumentedContext NormalOrder maxcount
+
+-- | Many step reduction of term t in NormalOrder with an instrumented context
+reduceTrace :: (Reduction t NormalOrder (InstrumentedContext t), Term t) =>  t -> Maybe t
+reduceTrace = (\(a,mess,_,log) -> trace (mess ("\n" ++ (pps (reverse log)))) a)
+                . reduce instrumentedContext NormalOrder maxcount
 
 -- | Many step reduction of term t in NormalOrder with an instrumented context
 --
