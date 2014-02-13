@@ -24,7 +24,7 @@ module Combinators (
     ,module Combinators.Lambda
     ,module Combinators.CombLambda
     ,module Combinators.Types
-    ,module Combinators.CombinatorTyped
+--    ,module Combinators.CombinatorTyped
     ,module Combinators.LambdaTyped
     ,module Combinators.Queries
 )
