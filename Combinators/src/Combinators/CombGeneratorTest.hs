@@ -31,43 +31,34 @@ instance Arbitrary (CTerm KS) where
 
 prop_rankTreeStruct :: Int -> Integer -> Bool
 prop_rankTreeStruct n m =
-                  if n > 0 && n < 25 && m > 1 && m <= (catalans !! n)
-                    then let ts = unrankTreeStruct n m
-                         in rankTreeStruct ts == m
-                    else True
+                  not (n > 0 && n < 25 && m > 1 && m <= (catalans !! n)) ||
+                     (let ts = unrankTreeStruct n m in rankTreeStruct ts == m)
 
 prop_grankTreeStruct :: Integer -> Bool
 prop_grankTreeStruct n =
-                  if n > 0
-                    then let ts = gunrankTreeStruct n
-                         in grankTreeStruct ts == n
-                    else True
+                  (n <= 0) ||
+                     (let ts = gunrankTreeStruct n in grankTreeStruct ts == n)
 
 
 prop_TreeGen :: Int -> Bool
-prop_TreeGen n =  if n >= 1 && n < 15
-                    then  length (genBinaryTreeStructs n) == fromIntegral (catalans !! n)
-                    else True
+prop_TreeGen n =  not (n >= 1 && n < 15) ||
+                     (length (genBinaryTreeStructs n) == fromIntegral (catalans !! n))
 
 prop_CombGen :: Int -> Bool
-prop_CombGen n =  if n >= 1 && n < 10
-                    then  fromIntegral (length (genCombsN n :: [CTerm KS])) ==
-                            (sizeGenCombsN (undefined :: KS) !! n)
-                    else True
+prop_CombGen n =  not (n >= 1 && n < 10) ||
+                     (fromIntegral (length (genCombsN n :: [CTerm KS])) ==
+                        (sizeGenCombsN (undefined :: KS) !! n))
 
 prop_RankGen :: CTerm KS -> Bool
 prop_RankGen t =  let ind = rankComb t
                   in -- trace ("prop_RankGen t: " ++ show t ++ " index: " ++ show ind) $
-                    if ind > 10000
-                            then True
-                            else head (take 1 (drop (fromIntegral (ind-1)) genCombs)) == t
+                    ((ind > 10000) ||
+                        (head (take 1 (drop (fromIntegral (ind - 1)) genCombs)) == t))
 
 prop_RankUnrank :: CTerm KS -> Bool
 prop_RankUnrank t = let ind = rankComb t
                     in -- trace ("prop_RankUnrank t: " ++ show t ++ " index: " ++ show ind) $
-                        if ind > 1000000
-                            then True
-                            else unrankComb ind == t
+                        ((ind > 1000000) || (unrankComb ind == t))
 
 
 testCombGenerator :: [Test]

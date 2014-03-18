@@ -22,7 +22,8 @@ import Combinators.Reduction
 import Combinators.CombLambda (combToLambda)
 import Combinators.Lambda
        (arityLambda, fromLambdaB, toLambdaB)
-import Combinators.CombGenerator (genCombsN, unrankComb, genCombs)
+import Combinators.CombGenerator
+       (sizeGenCombsN, unrankComb, genCombs)
 import Combinators.Combinator (CTerm(..), Basis, CTerm)
 import Combinators.Types (canonicalizeType, Typeable(..))
 import Combinators.LambdaTyped ()
@@ -31,7 +32,7 @@ import Combinators.Properties
        (notProper, isRegular, isPermutator, isAssociator,
         isDuplicator, isCancelator, isIdentity)
 
-import Data.List (intersperse,foldl')
+import Data.List (intercalate)
 import Control.Monad (liftM)
 import qualified Text.PrettyPrint as PP
        (sep, ($+$), Doc, render, (<+>), text, empty, int)
@@ -46,20 +47,16 @@ import Combinators.PrintingParsing (PP(..))
 -- * Queries
 -----------------------------------------------------------------------------
 
-findComb :: Basis b => Int -> Int -> (CTerm b-> Bool) -> CSV
-findComb from to decision = foldl' pr [] (concatMap genCombsN [from..to])
+findComb :: forall b. Basis b => Int -> Int -> (CTerm b-> Bool) -> CSV
+findComb from to decision = go fromNum
   where
-    pr resList comb = if decision comb
-                            then [pps comb] : resList
-                            else resList
-
-sizeGenCombsN :: Basis b => Int -> Int -> (CTerm b-> Bool) -> CSV
-findComb from to decision = foldl' pr [] (concatMap genCombsN [from..to])
-  where
-    pr resList comb = if decision comb
-                            then [pps comb] : resList
-                            else resList
-
+    go current | current > toNum = []
+               | otherwise       = let comb = unrankComb current
+                                   in if decision comb
+                                        then [show current, pps comb] : go (current + 1)
+                                        else go (current + 1)
+    fromNum = 1+sum (take (from - 1) (sizeGenCombsN (undefined :: b)))
+    toNum = sum (take to (sizeGenCombsN (undefined :: b)))
 
 isI :: Basis b => CTerm b -> Bool
 isI t = let term' = t :@ Var "x"
@@ -74,7 +71,7 @@ isS t = let term' = t :@ Var "x" :@ Var "y" :@ Var "z"
         in reduceS term' == Just (Var "x":@ Var "z" :@ (Var "y":@ Var "z"))
 
 genList :: forall b . (Basis b, Typeable (CTerm b)) => b -> Int -> CSV
-genList _ n =  map (map PP.render) $ headers : (map presentIt (filter filterIt genIt))
+genList _ n =  map (map PP.render) $ headers : map presentIt (filter filterIt genIt)
 
   where
     genIt = map (\c -> case reduceAndType c of
@@ -116,15 +113,12 @@ genList _ n =  map (map PP.render) $ headers : (map presentIt (filter filterIt g
                                 && (condCtype == condCtype2)
                                 then (condCtype,PP.empty)
                                 else
-                                    let remark1 =  if (condCtype /= condCtype2)
-                                                     then (PP.text "Red. Comb" PP.<+> pp condCtype2)
-                                                     else PP.empty
-                                        remark2 =  if (condCtype /= condItype)
-                                                     then (PP.text "Raw Lambda" PP.<+> pp condItype)
-                                                     else PP.empty
-                                        remark3 =  if (condCtype /= condItype2)
-                                                     then (PP.text "Red. Lambda " PP.<+> pp condItype2)
-                                                     else PP.empty
+                                    let remark1 =  if condCtype /= condCtype2 then
+                                                      PP.text "Red. Comb" PP.<+> pp condCtype2 else PP.empty
+                                        remark2 =  if condCtype /= condItype then
+                                                      PP.text "Raw Lambda" PP.<+> pp condItype else PP.empty
+                                        remark3 =  if condCtype /= condItype2 then
+                                                      PP.text "Red. Lambda " PP.<+> pp condItype2 else PP.empty
                                         remark = remark1 PP.<+> remark2 PP.<+> remark3
 
                                     in  (condCtype,remark)
@@ -147,7 +141,7 @@ genList _ n =  map (map PP.render) $ headers : (map presentIt (filter filterIt g
 reportProperties :: Basis b => Int -> CTerm b -> PP.Doc
 reportProperties i c =
     foldl (\ accu (f,s)  -> (case f i c of
-                        Just True -> (PP.<+> (PP.text s))
+                        Just True -> (PP.<+> PP.text s)
                         _ -> id) accu)
                         PP.empty
                         [(isCancelator,"Cancelator"),
@@ -175,7 +169,7 @@ type Field = String
 -- string. Always uses escaped fields.
 printCSV :: CSV -> String
 printCSV records = unlines (printRecord `map` records)
-    where printRecord = concat . intersperse ";" . map printField
+    where printRecord = intercalate ";" . map printField
           printField f = "\"" ++ concatMap escape f ++ "\""
           escape '"' = "\"\""
           escape x = [x]
@@ -184,7 +178,7 @@ printCSV records = unlines (printRecord `map` records)
 -- string. Always uses escaped fields.
 printCSVUnescaped :: CSV -> String
 printCSVUnescaped records = unlines (printRecord `map` records)
-    where printRecord = concat . intersperse ";" . map printField
+    where printRecord = intercalate ";" . map printField
           printField f = f
 
 -- e.g  writeCSV "KS-1000.csv" $ genList KS 1000
@@ -196,7 +190,7 @@ writeCSV fileName csv =
         (\hnd -> do
             hClose hnd
             putProgress "")
-        (\hnd -> writeIt hnd csv (1::Int))
+        (\hnd -> writeIt hnd csv (1:: Int))
   where
     writeIt hnd (hd:tl) i = do
         let line = withStrategy rseq (printRecord hd)
@@ -206,7 +200,7 @@ writeCSV fileName csv =
         writeIt hnd tl (i+1)
     writeIt _hnd [] _i = return ()
     putProgress s = hPutStr stderr $ "\r\ESC[K" ++ s
-    printRecord = concat . intersperse ";" . map printField
+    printRecord = intercalate ";" . map printField
     printField f = "\"" ++ concatMap escape f ++ "\""
     escape '"' = "\"\""
     escape x = [x]

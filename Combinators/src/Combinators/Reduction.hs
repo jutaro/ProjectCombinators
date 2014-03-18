@@ -1,5 +1,6 @@
-{-# LANGUAGE EmptyDataDecls, ScopedTypeVariables, MultiParamTypeClasses, TypeSynonymInstances,
-    FlexibleInstances, FlexibleContexts, Rank2Types #-}
+{-# LANGUAGE ScopedTypeVariables, MultiParamTypeClasses,
+   TypeSynonymInstances, FlexibleInstances, FlexibleContexts,
+   Rank2Types #-}
 -----------------------------------------------------------------------------
 --
 -- Module      :  Combinators.Reduction
@@ -129,11 +130,11 @@ goUp z = case zipUpLeft z of
 class (Monad c, BinaryTree t, PP t) => ReductionContext c t where
     runContext :: Int -> c (Maybe t) -> (Maybe t,ShowS,Int,[t])
     -- ^ run this context
-    startReduction :: () => (BTZipper t) -> c (BTZipper t)
+    startReduction :: () => BTZipper t -> c (BTZipper t)
     -- ^ This is invoked at the start of a reduction sequence
-    stepReduction :: (BinaryTree t, PP t) => (BTZipper t) -> c (Maybe (BTZipper t))
+    stepReduction :: (BinaryTree t, PP t) => BTZipper t -> c (Maybe (BTZipper t))
     -- ^ This is invoked for every step of a reduction sequence
-    stopReduction :: (BinaryTree t, PP t) => (BTZipper t) -> c (BTZipper t)
+    stopReduction :: (BinaryTree t, PP t) => BTZipper t -> c (BTZipper t)
     -- ^ This is invoked at the end of a reduction sequence
 
 
@@ -144,9 +145,9 @@ type NullContext = Identity
 
 instance (PP t, BinaryTree t) => ReductionContext Identity t where
     runContext _ (Identity a) = (a,id,0,[])
-    startReduction tz = return tz
+    startReduction = return
     stepReduction tz = return (Just tz)
-    stopReduction tz = return tz
+    stopReduction = return
 
 -- | A context which does nothing
 nullContext :: NullContext (Maybe a)
@@ -194,8 +195,7 @@ instance (PP t, BinaryTree t, Ord t) => ReductionContext (InstrumentedContext t)
                         t:li
                         ))
                     return (Just tz)
-    stopReduction tz = do
-        return tz
+    stopReduction = return
 
 type InstrumentedContext t = State (ShowS,Int,Int,Set.Set t,[t])
 
@@ -247,10 +247,10 @@ reduce :: forall c t s. (ReductionContext c t, Reduction t s c) => c (Maybe t) -
 reduce _c s n t =  (runContext :: Int -> c (Maybe t) ->  (Maybe t,ShowS,Int,[t])) n (reduceCont s t)
   where
     reduceCont s t = do
-        r <- (reduce' s)  (zipper t)
+        r <- reduce' s (zipper t)
         case r of
             Just t' -> return $ Just (unzipper t')
-            Nothing -> return $ Nothing
+            Nothing -> return Nothing
 
 -- | Many step reduction of term t in NormalOrder with an instrumented context
 reduceS :: (Reduction t NormalOrder (InstrumentedContext t), Term t) =>  t -> Maybe t
@@ -258,7 +258,7 @@ reduceS = (\(a,_,_,_) -> a) . reduce instrumentedContext NormalOrder maxcount
 
 -- | Many step reduction of term t in NormalOrder with an instrumented context
 reduceTrace :: (Reduction t NormalOrder (InstrumentedContext t), Term t) =>  t -> Maybe t
-reduceTrace = (\(a,mess,_,log) -> trace (mess ("\n" ++ (pps (reverse log)))) a)
+reduceTrace = (\(a,mess,_,log) -> trace (mess ("\n" ++ pps (reverse log))) a)
                 . reduce instrumentedContext NormalOrder maxcount
 
 -- | Many step reduction of term t in NormalOrder with an instrumented context
@@ -267,7 +267,7 @@ reduceTrace = (\(a,mess,_,log) -> trace (mess ("\n" ++ (pps (reverse log)))) a)
 reduceSForce :: (Reduction t NormalOrder (InstrumentedContext t), Term t) => t -> t
 reduceSForce t = case reduce instrumentedContext NormalOrder maxcount t of
                         (Just t',_,_,_) -> t'
-                        (Nothing,s,_,_) -> error ("Term>>reduceIt: " ++  (s ""))
+                        (Nothing,s,_,_) -> error ("Term>>reduceIt: " ++ s "")
 
 
 -- | Single step reduction of term t, in context c with strategy s with max n steps.

@@ -82,13 +82,18 @@ prop_lambdaB term = --trace ("\n\n" ++ ppl term ++ "\n" ++ ppl (parseLambda (ppl
                             term == fromLambdaB (toLambdaB term)
 
 prop_testReduction :: LTerm VarString Untyped -> Bool
-prop_testReduction term = if (case reduceS term of
-                                Nothing -> Nothing
-                                Just t -> Just (toLambdaB t))  == reduceS (toLambdaB term)
-                            then True
-                            else trace ("\n\nterm: " ++ pps term ++ "\nB-Red:"
-                                    ++ pps (reduceS (toLambdaB term))
-                                    ++ "\n\nS-Red:" ++ pps (reduceS term)) $ False
+prop_testReduction term = ((case reduceS term of
+                                 Nothing -> Nothing
+                                 Just t -> Just (toLambdaB t))
+                              == reduceS (toLambdaB term))
+                             ||
+                             trace
+                               ("\n\nterm: " ++
+                                  pps term ++
+                                    "\nB-Red:" ++
+                                      pps (reduceS (toLambdaB term)) ++
+                                        "\n\nS-Red:" ++ pps (reduceS term))
+                               False
 
 
 testReduction0 :: Assertion

@@ -105,9 +105,7 @@ parseMaybe parser = do
     PP.<?> "parseMaybe"
 
 parseList :: PP.Parser t -> PP.Parser [t]
-parseList parser = do
-        brackets' (commaSep' parser)
-    PP.<?> "parseList"
+parseList parser = brackets' (commaSep' parser)
 
 -----------------------------------------------------------------------------
 -- ** Helpers for parsec based parsers. Some lexer defaults

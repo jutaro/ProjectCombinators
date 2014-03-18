@@ -61,6 +61,7 @@ import Data.Maybe (isJust)
 import Debug.Trace (trace)
 import Combinators.Reduction (Term(..))
 import Combinators.PrintingParsing (PP(..), symbol', parens')
+import Control.Arrow (Arrow(..))
 
 -----------------------------------------------------------------------------
 -- * Simple Types
@@ -132,7 +133,7 @@ class Typeable t where
 --
 -- >> "a b c d e f g a1 b1 c1 d1 e1 f1 g1 a2 ..."
 typeVarGen :: [String]
-typeVarGen = [ c: n | n <- ("" : map show [(1:: Int)..]), c <- "abcdefg"]
+typeVarGen = [c : n | n <- "" : map show [(1 :: Int) ..], c <- "abcdefg"]
 
 -- | Name type variables in a type in a canonical way
 canonicalizeType :: SType -> SType
@@ -252,13 +253,13 @@ updateSubst (atom,typ) subst = (atom,typ):subst
 substType :: Substitution -> SType -> SType
 substType s typ = foldr (\  (subs,repl) t -> substType' (subs,repl) t) typ s
   where
-    substType' (subs,repl) (t1 :->: t2) = (substType' (subs,repl) t1) :->: (substType' (subs,repl) t2)
+    substType' (subs,repl) (t1 :->: t2) = substType' (subs, repl) t1 :->: substType' (subs, repl) t2
     substType' (subs,repl) (SAtom x) | x == subs         = repl
                                      | otherwise         = SAtom x
 
 -- | Apply a substitutor to an environment
 substContext :: Substitution -> TypeContext v -> TypeContext v
-substContext subst env = map (\(n,t) -> (n,substType subst t)) env
+substContext subst = map (second (substType subst))
 
 -- | List all type atoms of a type
 typeVars :: SType -> [TypeAtom]
@@ -271,7 +272,7 @@ typeVars (l :->: r)       = typeVars l ++ typeVars r
 -- if you dont want these use unifyTypesR
 unifyTypes, unifyTypes' :: Bool -> SType -> SType -> Maybe Substitution
 unifyTypes' _ t1 t2       | t1 == t2                   = Just idSubstitution
-unifyTypes' _ (SAtom s) b | not (elem s (typeVars b))  = Just (updateSubst (s,b) idSubstitution)
+unifyTypes' _ (SAtom s) b | s `notElem` typeVars b  = Just (updateSubst (s,b) idSubstitution)
                           | otherwise                  = Nothing
 unifyTypes' b(l :->: r) (SAtom s)                       = unifyTypes b (SAtom s) (l :->: r)
 unifyTypes' b (l1 :->: r1) (l2 :->: r2)                = do
@@ -285,7 +286,7 @@ unifyTypes b t1 t2 =
                         unifyTypes' b t1 t2
                 else unifyTypes' b t1 t2
          in if b
-            then trace ("unifyTypes res: " ++ show res) $ res
+            then trace ("unifyTypes res: " ++ show res) res
             else res
 
 -- | Unify two types and returns just a substitution if possible,
@@ -297,8 +298,8 @@ unifyTypesR trace type1 type2 =
         renamed = renameType type2 varNames
     in (renamed, unifyTypes trace type1 renamed)
   where
-    renameType (SAtom s) atomList | elem s atomList = renameType (SAtom (s++"'")) atomList
-                                  | otherwise       = (SAtom s)
+    renameType (SAtom s) atomList | s `elem` atomList = renameType (SAtom (s++"'")) atomList
+                                  | otherwise       = SAtom s
     renameType (l :->: r) atomList                   = renameType l atomList :->: renameType r atomList
 
 -----------------------------------------------------------------------------

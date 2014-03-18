@@ -80,7 +80,7 @@ isCancelator i term = do
                             Var _ -> True
                             _     -> False)
                                 (allSubterms outTerm)
-    return (or (map (\v -> not (elem v varList)) vars))
+    return (any (`notElem` varList) vars)
 
 -- | Is this combinator a duplicator?
 isDuplicator :: Basis basis => Int -> CTerm basis -> Maybe Bool
@@ -92,7 +92,7 @@ isDuplicator i term = do
                             Var _ -> True
                             _     -> False)
                                 (allSubterms outTerm)
-    return (or (map (\v -> length (filter (== v) varList) > 1) vars))
+    return (any (\ v -> length (filter (== v) varList) > 1) vars)
 
 -- | Is this combinator an associator?
 isAssociator :: Basis basis => Int -> CTerm basis -> Maybe Bool
@@ -101,7 +101,7 @@ isAssociator i term = do
         inTerm   = foldl (:@) term vars
     outTerm  <- reduceS inTerm
     let computed = leftSpine outTerm
-    return (not $ null $ (filter (not . isLeaf) computed))
+    return (any (not . isLeaf) computed)
 
 -- | Is this combinator a permutator?
 isPermutator :: Basis basis => Int -> CTerm basis -> Maybe Bool

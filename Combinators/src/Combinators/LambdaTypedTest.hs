@@ -131,8 +131,9 @@ testInhabitant7 =
     let typeString = "(a -> b -> c) -> b -> a -> c"
         tst = (pparse :: String -> SType) typeString
         inh = inhabitants tst 3
-    in inh @?= ((pparse :: String -> [LTerm VarString SType])
-                        "[\\u:a -> b -> c v:b w:a.u w v]")
+    in inh @?=
+          (pparse :: String -> [LTerm VarString SType])
+            "[\\u:a -> b -> c v:b w:a.u w v]"
 
 -- | New binder
 testInhabitant8 :: Assertion

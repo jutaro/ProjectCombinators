@@ -80,7 +80,7 @@ reconstructTypeC traceIt cont ind t =
                 else
                     reconstructType' traceIt cont ind t
     in if traceIt
-            then trace ("reconstructType res: " ++ show res) $ res
+            then trace ("reconstructType res: " ++ show res) res
             else res
 
 

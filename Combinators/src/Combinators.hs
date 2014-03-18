@@ -12,38 +12,21 @@
 --
 -----------------------------------------------------------------------------
 
-module Combinators (
-    module Combinators.Variable
-    ,module Combinators.PrintingParsing
-    ,module Combinators.BinaryTree
-    ,module Combinators.Reduction
-    ,module Combinators.Combinator
-    ,module Combinators.CombinatorBasis
-    ,module Combinators.Properties
-    ,module Combinators.CombGenerator
-    ,module Combinators.Lambda
-    ,module Combinators.CombLambda
-    ,module Combinators.Types
---    ,module Combinators.CombinatorTyped
-    ,module Combinators.LambdaTyped
-    ,module Combinators.Queries
-)
+module Combinators (module X) where
+ import Combinators.PrintingParsing as X
+ import Combinators.Variable as X
+ import Combinators.BinaryTree as X
+ import Combinators.Reduction as X
+ import Combinators.Combinator as X
+ import Combinators.CombinatorBasis as X
+ import Combinators.Lambda as X
+ import Combinators.Properties as X
+ import Combinators.CombLambda as X
+ import Combinators.CombGenerator as X
+ import Combinators.Types as X
+ import Combinators.LambdaTyped as X
+ import Combinators.Queries as X
 
-where
 
-import Combinators.PrintingParsing
-import Combinators.Variable
-import Combinators.BinaryTree
-import Combinators.Reduction
-import Combinators.Combinator
-import Combinators.CombinatorBasis
-import Combinators.Lambda
-import Combinators.Properties
-import Combinators.CombLambda
-import Combinators.CombGenerator
-import Combinators.Types
-import Combinators.LambdaTyped
-import Combinators.CombinatorTyped ()
-import Combinators.Queries
 
 

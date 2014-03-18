@@ -61,7 +61,7 @@ varParse = do
 --
 -- > [u,v,w,x,y,z,u1,v1,w1,x1,y1,z1,u2...]
 nameGen :: [String]
-nameGen = [ c: n | n <- ("" : map show [(1:: Int)..]), c <- "uvwxyz"]
+nameGen = [c : n | n <- "" : map show [(1 :: Int) ..], c <- "uvwxyz"]
 
 -- | Generates an infinite stream of variable names with a hyphen at the end:
 --

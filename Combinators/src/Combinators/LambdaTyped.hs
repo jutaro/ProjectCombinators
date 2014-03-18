@@ -45,6 +45,7 @@ import Data.List (transpose)
 import Debug.Trace (trace)
 import Combinators.PrintingParsing (PP(..), parens', symbol', dot', colon')
 import Combinators.Reduction (StringTerm(..))
+import Control.Arrow (Arrow(..))
 
 -----------------------------------------------------------------------------
 -- ** Lambda terms with simple types
@@ -56,12 +57,12 @@ instance PP (LTerm VarString SType) where
 -- | Pretty prints a lambda term with simple types.
 ppSt' :: Bool -> Bool -> [(VarString,SType)] -> LTerm VarString SType -> PP.Doc
 ppSt' _ _ _ (LVar v)                          = PP.text (varPp v)
-ppSt' il rm l ((LAbst v ty1) :@: ((LAbst v' ty2) :@: t'))
-                                              = ppSt' il rm ((v,ty1) : l) ((LAbst v' ty2) :@: t')
-ppSt' il False l ((LAbst v ty) :@: t)         = PP.parens $ ppSt' il True l ((LAbst v ty) :@: t)
-ppSt' _ True l ((LAbst v ty) :@: t)  = PP.fcat [PP.text "\\",
-                                                PP.fsep (map (\(v,ty) -> (PP.text (varPp v))
-                                                            PP.<> PP.text ":" PP.<>pp ty)
+ppSt' il rm l (LAbst v ty1 :@: (LAbst v' ty2 :@: t'))
+                                              = ppSt' il rm ((v,ty1) : l) (LAbst v' ty2 :@: t')
+ppSt' il False l (LAbst v ty :@: t)         = PP.parens $ ppSt' il True l (LAbst v ty :@: t)
+ppSt' _ True l (LAbst v ty :@: t)  = PP.fcat [PP.text "\\",
+                                                PP.fsep (map (\(v,ty) -> PP.text (varPp v) PP.<>
+                                                                        PP.text ":" PP.<>pp ty)
                                                     (reverse ((v,ty):l))),
                                                         PP.text ".", ppSt' True True [] t]
 ppSt' True rm _ (l :@: r)                     = PP.fsep [ppSt' True False [] l, ppSt' False rm [] r]
@@ -85,8 +86,7 @@ parseTermSt (Just l) = do
 parsePartSt :: Parser (LTerm VarString SType)
 parsePartSt = do
     PA.spaces
-    do
-        parens' (parseTermSt Nothing)
+    parens' (parseTermSt Nothing)
     PA.<|> do
         symbol' "\\"
         vl <- PA.many1 (PA.try typedVarParse)
@@ -118,7 +118,7 @@ instance Typeable (LTerm VarInt SType) where
 
 instance Typeable (LTerm VarString SType) where
     typeof env term   = case getType env term of
-                                Just r -> Just $ (canonicalizeType r,[])
+                                Just r -> Just (canonicalizeType r, [])
                                 Nothing    -> Nothing
     typeof' term = let env = map (\(v,i) -> (v, SAtom (typeVarGen !! i))) $ zip (freeVars term) [0..]
                         in  typeof env term
@@ -128,7 +128,7 @@ instance Typeable (LTerm VarString SType) where
                  | otherwise = error ("Types>>typeOfC: Term not closed: " ++ pps term)
 
 -- | Get type for typed term (Lambda church calculus, a term is annotated with types)
-getType :: (TypeContext VarString) -> LTerm VarString SType -> Maybe SType
+getType :: TypeContext VarString -> LTerm VarString SType -> Maybe SType
 getType cont (LVar s) =
     case lookup s cont of
         Nothing -> error ("LambdaTyped>>getType: Unbound variableV: " ++ s ++ " env: " ++ show cont)
@@ -169,7 +169,7 @@ instance Typeable (LTerm VarString Untyped) where
 -- | Convert an untyped term to a typed term if possible
 typeLambda :: TypeContext VarString -> LTerm VarString Untyped -> Maybe (LTerm VarString SType)
 typeLambda env term = case reconstructType False (length env,env) term of
-                            Just (_,_,_,nt) -> Just $ nt
+                            Just (_,_,_,nt) -> Just nt
                             Nothing    -> Nothing
 
 -- | Convert an untyped term to a typed term if possible, generate any types for free variables
@@ -179,8 +179,8 @@ typeLambda' term = let env = map (\(v,i) -> (v, SAtom (typeVarGen !! i))) $ zip 
 
 -- | Convert an typed term to an untyped term
 untypeLambda :: LTerm VarString SType -> LTerm VarString Untyped
-untypeLambda (LVar s)             = (LVar s)
-untypeLambda (LAbst s _ :@: term) = (LAbst s Untyped :@: untypeLambda term)
+untypeLambda (LVar s)             = LVar s
+untypeLambda (LAbst s _ :@: term) = LAbst s Untyped :@: untypeLambda term
 untypeLambda (l :@: r)            = untypeLambda l :@: untypeLambda r
 untypeLambda (LAbst _ _)          = error "LambdaType>>untypeLambda: Lonely LAbst"
 
@@ -202,7 +202,7 @@ reconstructType' b (index,env) (LAbst s _ :@: term) =
                     case lookup s env' of
                         Nothing -> error ("LambdaTyped>>reconstructType: Unbound variableL: "
                                         ++ s ++ " env: " ++ show env')
-                        Just t  -> Just (ind,tail env',t :->: nt, (LAbst s t :@: nterm))
+                        Just t  -> Just (ind, tail env', t :->: nt, LAbst s t :@: nterm)
 reconstructType' b (index,env) (l :@: r) = do
         (index',env',tr,ntr)   <- reconstructType b (index,env) r
         (index'',("_res",tr'):env'',tl,ntl) <- reconstructType b (index',("_res",tr):env') l
@@ -229,7 +229,7 @@ reconstructType traceIt (index,env) t =
                 else
                     reconstructType' traceIt (index,env) t
     in if traceIt
-            then trace ("reconstructType res: " ++ show res) $ res
+            then trace ("reconstructType res: " ++ show res) res
             else res
 
 -----------------------------------------------------------------------------
@@ -262,9 +262,8 @@ inhabitants'' (l :->: r)  (i,cont,mem) level =
 inhabitants'' (SAtom s) (i,cont,mem) level
                                 | level == 0 = ([],(i,cont,mem))
                                 | otherwise  =
-    let tupels = map (\ (v,t) -> (v,rightRest t))
-                    $ (filter (\(_,t) -> resultType t == (SAtom s)))
-                        cont
+    let tupels = map (second rightRest)
+                    $ filter (\ (_, t) -> resultType t == SAtom s) cont
         (res,(i',cont',mem')) = foldl (\ (accu,(i',cont',mem')) (s,tl) ->
                                     let (res,(i'',cont'',mem'')) =
                                                 foldl calc ([LVar s],(i',cont',mem')) tl

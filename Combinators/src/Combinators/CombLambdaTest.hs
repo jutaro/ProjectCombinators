@@ -33,6 +33,7 @@ import Combinators.CombinatorBasis (KBCW(..), IKBCW, IKS)
 import Combinators.PrintingParsing (PP, PP(..))
 import Test.HUnit ((@=?), Assertion)
 import Test.Framework.Providers.HUnit (testCase)
+import Data.Maybe (fromMaybe)
 
 trace :: a -> b -> b
 trace _a b = b
@@ -62,10 +63,9 @@ testCombLambda = [-- testProperty "prop_combToLambda" prop_combToLambda
 
 
 prop_LambdaToCombKS :: LTerm VarString Untyped -> Bool
-prop_LambdaToCombKS term = case prop of
-                                Nothing -> trace ("failed reduction term: "  ++
-                                                pps (canonicalize term)) $ True
-                                Just b -> b
+prop_LambdaToCombKS term = fromMaybe
+                              (trace ("failed reduction term: " ++ pps (canonicalize term)) True)
+                              prop
   where
     prop = do
         let term' = canonicalize term
@@ -74,25 +74,23 @@ prop_LambdaToCombKS term = case prop of
         cr <- reduceS ct
         let t2 = combToLambda cr
         resRed <- reduceS t2
-        if lr == resRed
-            then (trace' "prop_LambdaToCombKS" lr cr resRed) $ return True
-            else (trace' "prop_LambdaToCombKS" lr cr resRed) $ return False
+        trace' "prop_LambdaToCombKS" lr cr resRed
+           (return (lr == resRed))
 
-trace' :: forall a t t1 t2. (Ord t, Ord t2) =>
-        (PP (LTerm VarString t), PP t1, PP (LTerm VarString t2)) =>
-        [Char] -> LTerm VarString t -> t1 -> LTerm VarString t2 -> a -> a
+trace' :: (Ord t, Ord t2) =>
+                 (PP (LTerm VarString t), PP t1, PP (LTerm VarString t2)) =>
+                 String -> LTerm VarString t -> t1 -> LTerm VarString t2 -> a -> a
 
-trace' name lr cr resRed a =
+trace' name lr cr resRed =
     trace
         (name ++ "\nin:\n" ++ pps (canonicalize lr) ++ "\ncon:\n" ++
          pps cr ++ "\nres:\n" ++
-         pps (canonicalize resRed)) a
+         pps (canonicalize resRed))
 
 prop_LambdaToCombIKS :: LTerm VarString Untyped -> Bool
-prop_LambdaToCombIKS term = case prop of
-                                Nothing -> trace ("failed reduction term: "  ++
-                                                pps (canonicalize term)) $ True
-                                Just b -> b
+prop_LambdaToCombIKS term = fromMaybe
+                               (trace ("failed reduction term: " ++ pps (canonicalize term)) True)
+                               prop
   where
     prop = do
         let term' = canonicalize term
@@ -101,15 +99,13 @@ prop_LambdaToCombIKS term = case prop of
         cr <- reduceS ct
         let t2 = combToLambda cr
         resRed <- reduceS t2
-        if lr == resRed
-            then (trace' "prop_LambdaToCombIKS" lr cr resRed) $ return True
-            else (trace' "prop_LambdaToCombIKS" lr cr resRed) $ return False
+        trace' "prop_LambdaToCombIKS" lr cr resRed
+            return (lr == resRed)
 
 prop_LambdaToCombIKBCW :: LTerm VarString Untyped -> Bool
-prop_LambdaToCombIKBCW term = case prop of
-                                Nothing -> trace ("failed reduction term: "  ++
-                                                pps (canonicalize term)) $ True
-                                Just b -> b
+prop_LambdaToCombIKBCW term = fromMaybe
+                                 (trace ("failed reduction term: " ++ pps (canonicalize term)) True)
+                                 prop
   where
     prop = do
         let term' = canonicalize term
@@ -118,9 +114,8 @@ prop_LambdaToCombIKBCW term = case prop of
         cr <- reduceS ct
         let t2 = combToLambda cr
         resRed <- reduceS t2
-        if lr == resRed
-            then (trace' "prop_LambdaToCombIKBCW" lr cr resRed) $ return True
-            else (trace' "prop_LambdaToCombIKBCW" lr cr resRed) $ return False
+        trace' "prop_LambdaToCombIKBCW" lr cr resRed
+           (return (lr == resRed))
 
 -- B BCKW
 test_B_KBCW_Abst :: Assertion

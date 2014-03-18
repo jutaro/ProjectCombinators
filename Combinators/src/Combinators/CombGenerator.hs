@@ -37,8 +37,9 @@ import Combinators.BinaryTree
 
 import Data.Array.Unboxed
 import Control.Monad (replicateM)
-import Data.List (findIndex, foldl')
+import Data.List (elemIndex, foldl')
 import Combinators.PrintingParsing (PP)
+import Data.Maybe (fromMaybe)
 
 
 -- | Produces a list of catalan numbers
@@ -70,10 +71,8 @@ genBinaryTreeStructs n = gen initialArray n (n-1) 1
     initialArray = array (1,n*2) [(i, i <= n) | i <- [1..n*2]]
     gen seq k l q = let newSeq = if k < n then seq // [(2*n-k-l,False),(2*n-k-l+1,True)] else seq
                     in newSeq : (if k > 1
-                                    then (gen newSeq (k-1) 1 l) ++
-                                        if l < k && l < q
-                                            then gen newSeq k (l+1) q
-                                            else []
+                                    then gen newSeq (k - 1) 1 l ++
+                                            if l < k && l < q then gen newSeq k (l + 1) q else []
                                     else [])
 
 -- | Number of internal nodes of the given tree struct
@@ -86,14 +85,14 @@ rankTreeStruct seq = rank' 0 n 1 (n - 1)
   where
     table = initGFuncTable n
     n = treeStructNodes seq
-    rank' r k i m | i <= 2 * n && m >= 0 = if seq ! i == True
+    rank' r k i m | i <= 2 * n && m >= 0 = if seq ! i
                                         then rank' r k (i+1) (m-1)
                                         else rank' (r + gfunc table k m) (k-1) (i+1) m
                   | otherwise     = r + 1
 
 -- | Unranking for a certain number of internal noes
 unrankTreeStruct :: Int -> Integer -> BinaryTreeStruct
-unrankTreeStruct n r = unrank' initialArray 1 (n-1) n r
+unrankTreeStruct n = unrank' initialArray 1 (n-1) n
   where
     initialArray = array (1,n*2) [(i, False) | i <- [1..n*2]]
     table = initGFuncTable n
@@ -107,11 +106,11 @@ unrankTreeStruct n r = unrank' initialArray 1 (n-1) n r
 -- | Ranking for any number of internal nodes
 grankTreeStruct :: BinaryTreeStruct -> Integer
 grankTreeStruct ts = let n = treeStructNodes ts
-                     in (sum (take n catalans)) + rankTreeStruct ts
+                     in sum (take n catalans) + rankTreeStruct ts
 
 -- | Unranking for any number of internal nodes
 gunrankTreeStruct :: Integer -> BinaryTreeStruct
-gunrankTreeStruct r = unrank 0 r
+gunrankTreeStruct = unrank 0
   where
     unrank n r' = let c = catalans !! n
                   in if r' <= c
@@ -120,7 +119,7 @@ gunrankTreeStruct r = unrank 0 r
 
 -- Returns a two dimensional array with precomputed values
 initGFuncTable :: Int -> [[Integer]]
-initGFuncTable n = reverse $ foldl' (\ accu k' -> computeRow k' accu) [] [1..n]
+initGFuncTable n = reverse $ foldl' (flip computeRow) [] [1..n]
   where
     computeRow :: Int -> [[Integer]] -> [[Integer]]
     computeRow _k' [] =  [[1]]
@@ -152,17 +151,17 @@ genCombsTree :: (PP (CTerm basis), Basis basis) =>
                     Int -> [Combinator basis] -> [CTerm basis]
 genCombsTree n combs =
     let treeStructs = genBinaryTreeStructs n
-    in map ((\ (r,_,_) -> r) . (gen combs 1)) treeStructs
+    in map ((\ (r, _, _) -> r) . gen combs 1) treeStructs
 
 -- Helper function for Term building
 gen :: Basis basis =>
          [Combinator basis]
          -> Int -> BinaryTreeStruct -> (CTerm basis, Int, [Combinator basis])
 gen combList index ts | index > snd (bounds ts) || not (ts ! index) =
-    (Const (head combList), index+1,(tail combList))
+    (Const (head combList), index + 1, tail combList)
                       | otherwise =
     let (left,index', combList') = gen combList (index +1) ts
-        (right,index'', combList'') = gen combList' (index') ts
+        (right,index'', combList'') = gen combList' index' ts
     in (left :@ right,index'',combList'')
 
 sizeGenCombsN :: forall b. Basis b => b -> [Integer]
@@ -181,19 +180,24 @@ rankComb term = -- trace ("n: " ++ show n ++
     rankNum = rankTreeStruct ts
     permNum = (catalans !! n) * fromIntegral permIndex
     cataNum = sum (map (\i -> (catalans !! (i-1)) *
-                        ((fromIntegral (length primCombis)) ^ i)) [1..n])
+                        (fromIntegral (length primCombis) ^ i)) [1..n])
 
     n = nodeSize term
     primCombis = primCombs :: [Combinator basis]
     perm = replicateM (n+1) primCombs
     leaves = preorderLeaves term
-    permIndex = case findIndex (== (map (\ t -> case t of
-                                                (Const c)  -> c
-                                                (Var _v)   -> error "CombGenerator>>rankCombs: not a pure combinator"
-                                                (_l :@ _r) -> error "CombGenerator>>rankCombs: impossible in leave"
-                                                ) leaves)) perm of
-                Just i -> i
-                Nothing -> error "CombGenerator>>rankCombs: unknown permutation index"
+    permIndex = fromMaybe
+                   (error "CombGenerator>>rankCombs: unknown permutation index")
+                   (elemIndex
+                       (map
+                          (\ t ->
+                             case t of
+                                 (Const c) -> c
+                                 (Var _v) -> error "CombGenerator>>rankCombs: not a pure combinator"
+                                 (_l :@ _r) -> error
+                                                 "CombGenerator>>rankCombs: impossible in leave")
+                          leaves)
+                      perm)
     ts = treeStructFromBinaryTree term
 
 -- | Unranking for any number of internal noes

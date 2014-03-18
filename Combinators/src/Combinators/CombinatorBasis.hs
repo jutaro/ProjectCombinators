@@ -6,7 +6,7 @@
 --
 -----------------------------------------------------------------------------
 
-{-# LANGUAGE EmptyDataDecls, FlexibleInstances, MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
 
 module Combinators.CombinatorBasis where
 
@@ -31,29 +31,29 @@ instance Basis KBCW where
 
 instance BracketAbstract KBCW where
     -- nested abstractions are passed to the helper function
-    bracketAbstract ((LAbst v _ty) :@: ((LAbst v2 ty2) :@: r)) =
-        bracketAbstract' v  (bracketAbstract ((LAbst v2 ty2) :@: r))
+    bracketAbstract (LAbst v _ty :@: (LAbst v2 ty2 :@: r)) =
+        bracketAbstract' v  (bracketAbstract (LAbst v2 ty2 :@: r))
     bracketAbstract (LVar v) = Var v
     -- identity case
-    bracketAbstract ((LAbst v _) :@: LVar r) | v == r    = Const w :@ Const k
+    bracketAbstract (LAbst v _ :@: LVar r) | v == r    = Const w :@ Const k
                                              | otherwise = Const k :@ Var r
     -- eta shortcut
-    bracketAbstract (((LAbst v _ty) :@: l) :@: _r) | not (occurs v l) = bracketAbstract l
+    bracketAbstract ((LAbst v _ty :@: l) :@: _r) | not (occurs v l) = bracketAbstract l
     -- constant case
-    bracketAbstract ((LAbst v _) :@: r) | not (occurs v r) = Const k :@ bracketAbstract r
+    bracketAbstract (LAbst v _ :@: r) | not (occurs v r) = Const k :@ bracketAbstract r
     -- application case
-    bracketAbstract ((LAbst v ty) :@: (l :@: r))
+    bracketAbstract (LAbst v ty :@: (l :@: r))
     -- v notElem l
                                         | not (occurs v l) = Const b :@  bracketAbstract l :@
-                                                                bracketAbstract ((LAbst v ty) :@: r)
+                                                                bracketAbstract (LAbst v ty :@: r)
     -- v notElem r
                                         | not (occurs v r) = Const c
-                                                                :@  bracketAbstract ((LAbst v ty) :@: l)
+                                                                :@  bracketAbstract (LAbst v ty :@: l)
                                                                 :@  bracketAbstract r
     -- v elem r && v elem l
                                         | otherwise = Const w :@ ((Const b :@ (Const c
-                                                         :@ bracketAbstract ((LAbst v ty) :@: l)))
-                                                    :@ bracketAbstract ((LAbst v ty) :@: r))
+                                                         :@ bracketAbstract (LAbst v ty :@: l)))
+                                                    :@ bracketAbstract (LAbst v ty :@: r))
     bracketAbstract (l :@: r) = bracketAbstract l :@ bracketAbstract r
     bracketAbstract (LAbst v _) = error $ "CombLambda>>bracketAbstract: Lonely Abstraction " ++ show v
 
@@ -76,7 +76,7 @@ data IKS = IKS
 
 -- | The universal identity
 i :: Basis b => Combinator b
-i = Combinator "I" ["u#"] (Var ("u#"))
+i = Combinator "I" ["u#"] (Var "u#")
             (SAtom "a" :->: SAtom "a")
 
 instance Basis IKS where
@@ -84,18 +84,18 @@ instance Basis IKS where
 
 instance BracketAbstract IKS where
     -- nested abstractions are passed to the helper function
-    bracketAbstract ((LAbst v _ty) :@: ((LAbst v2 ty2) :@: r)) =
-        bracketAbstract' v  (bracketAbstract ((LAbst v2 ty2) :@: r))
+    bracketAbstract (LAbst v _ty :@: (LAbst v2 ty2 :@: r)) =
+        bracketAbstract' v  (bracketAbstract (LAbst v2 ty2 :@: r))
     bracketAbstract (LVar v) = Var v
     -- identity case
-    bracketAbstract ((LAbst v _) :@: LVar r) | v == r = Const i
+    bracketAbstract (LAbst v _ :@: LVar r) | v == r = Const i
     -- eta shortcut
-    bracketAbstract (((LAbst v _ty) :@: l) :@: _r) | not (occurs v l) = bracketAbstract l
+    bracketAbstract ((LAbst v _ty :@: l) :@: _r) | not (occurs v l) = bracketAbstract l
     -- constant case
-    bracketAbstract ((LAbst v _) :@: r) | not (occurs v r) = Const k :@ bracketAbstract r
+    bracketAbstract (LAbst v _ :@: r) | not (occurs v r) = Const k :@ bracketAbstract r
     -- application case
-    bracketAbstract ((LAbst v ty) :@: (l :@: r))   = Const s :@  bracketAbstract ((LAbst v ty) :@: l)
-                                                    :@ bracketAbstract ((LAbst v ty) :@: r)
+    bracketAbstract (LAbst v ty :@: (l :@: r))   = Const s :@  bracketAbstract (LAbst v ty :@: l)
+                                                    :@ bracketAbstract (LAbst v ty :@: r)
     bracketAbstract (l :@: r) = bracketAbstract l :@ bracketAbstract r
     bracketAbstract (LAbst v _) = error $ "CombLambda>>bracketAbstract: Lonely Abstraction " ++ show v
 
@@ -119,17 +119,17 @@ b,c,w :: Basis b => Combinator b
 
 -- | The universal compositor
 b = Combinator "B" ["u#","v#","w#"]
-            (Var ("u#") :@ (Var ("v#") :@ Var ("w#")))
+            (Var "u#" :@ (Var "v#" :@ Var "w#"))
                 ((SAtom "a" :->: SAtom "b") :->: (SAtom "c" :->: SAtom "a") :->: SAtom "c" :->: SAtom "b")
 
 -- | The universal permutator
 c = Combinator "C" ["u#","v#","w#"]
-            ((Var ("u#") :@ Var ("w#")) :@ Var ("v#"))
+            ((Var "u#" :@ Var "w#") :@ Var "v#")
                 ((SAtom "a" :->: SAtom "b" :->: SAtom "c") :->: SAtom "b" :->: SAtom "a" :->: SAtom "c")
 
 -- | The universal duplicator
 w = Combinator "W" ["u#", "v#"]
-            (Var ("u#") :@ Var ("v#") :@ Var ("v#"))
+            (Var "u#" :@ Var "v#" :@ Var "v#")
                 ((SAtom "a" :->: SAtom "a" :->: SAtom "b") :->: SAtom "a" :->: SAtom "b")
 
 instance Basis IKBCW where
@@ -137,28 +137,28 @@ instance Basis IKBCW where
 
 instance BracketAbstract IKBCW where
     -- nested abstractions are passed to the helper function
-    bracketAbstract ((LAbst v _ty) :@: ((LAbst v2 ty2) :@: r)) =
-        bracketAbstract' v  (bracketAbstract ((LAbst v2 ty2) :@: r))
+    bracketAbstract (LAbst v _ty :@: (LAbst v2 ty2 :@: r)) =
+        bracketAbstract' v  (bracketAbstract (LAbst v2 ty2 :@: r))
     bracketAbstract (LVar v) = Var v
     -- identity case
-    bracketAbstract ((LAbst v _) :@: LVar r) | v == r = Const i
+    bracketAbstract (LAbst v _ :@: LVar r) | v == r = Const i
     -- eta shortcut
-    bracketAbstract (((LAbst v _ty) :@: l) :@: _r) | not (occurs v l) = bracketAbstract l
+    bracketAbstract ((LAbst v _ty :@: l) :@: _r) | not (occurs v l) = bracketAbstract l
     -- constant case
-    bracketAbstract ((LAbst v _) :@: r) | not (occurs v r) = Const k :@ bracketAbstract r
+    bracketAbstract (LAbst v _ :@: r) | not (occurs v r) = Const k :@ bracketAbstract r
     -- application case
-    bracketAbstract ((LAbst v ty) :@: (l :@: r))
+    bracketAbstract (LAbst v ty :@: (l :@: r))
     -- v notElem l
                                         | not (occurs v l) = Const b :@  bracketAbstract l :@
-                                                                bracketAbstract ((LAbst v ty) :@: r)
+                                                                bracketAbstract (LAbst v ty :@: r)
     -- v notElem r
                                         | not (occurs v r) = Const c
-                                                                :@  bracketAbstract ((LAbst v ty) :@: l)
+                                                                :@  bracketAbstract (LAbst v ty :@: l)
                                                                 :@  bracketAbstract r
     -- v elem r && v elem l
                                         | otherwise = Const w :@ ((Const b :@ (Const c
-                                                         :@ bracketAbstract ((LAbst v ty) :@: l)))
-                                                    :@ bracketAbstract ((LAbst v ty) :@: r))
+                                                         :@ bracketAbstract (LAbst v ty :@: l)))
+                                                    :@ bracketAbstract (LAbst v ty :@: r))
     bracketAbstract (l :@: r) = bracketAbstract l :@ bracketAbstract r
     bracketAbstract (LAbst v _) = error $ "CombLambda>>bracketAbstract: Lonely Abstraction " ++ show v
 

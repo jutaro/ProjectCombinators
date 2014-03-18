@@ -99,7 +99,7 @@ instance Ord t => Ord (LTerm VarInt t) where
     compare a b = canonicalizeLambdaB a `compare'` canonicalizeLambdaB b
 
 compare' :: Ord t => LTerm v t -> LTerm v t -> Ordering
-compare' a b = check a b
+compare' = check
   where check (LVar x1) (LVar y1) = compare x1 y1 `_then` EQ
         check (LAbst _x1 x2) (LAbst _y1 y2)
           = compare x2 y2 `_then` EQ -- don't care about names
@@ -153,7 +153,7 @@ instance Ord t => StringTerm (LTerm VarString t) where
 -- ** Priniting and parsing
 
 instance PP (LTerm VarString Untyped) where
-    pp t = pp' True True [] t
+    pp = pp' True True []
     pparser = parseTerm Nothing
 
 instance PP (LTerm VarInt Untyped) where
@@ -168,10 +168,10 @@ instance PP (LTerm VarInt Untyped) where
 --    (which is closed with brackets anyway)
 pp' :: Bool -> Bool -> [VarString] -> LTerm VarString Untyped -> PP.Doc
 pp' _ _ _ (LVar v)                          = PP.text (varPp v)
-pp' il rm l ((LAbst v _) :@: ((LAbst v' _) :@: t'))
-                                            = pp' il rm (v : l) ((LAbst v' Untyped) :@: t')
-pp' il False l ((LAbst v _) :@: t)          = {-PP.parens $-} pp' il True l ((LAbst v Untyped) :@: t)
-pp' _ True l ((LAbst v _) :@: t)            = PP.parens $ PP.fcat [PP.text "\\",
+pp' il rm l (LAbst v _ :@: (LAbst v' _ :@: t'))
+                                            = pp' il rm (v : l) (LAbst v' Untyped :@: t')
+pp' il False l (LAbst v _ :@: t)          = {-PP.parens $-} pp' il True l (LAbst v Untyped :@: t)
+pp' _ True l (LAbst v _ :@: t)            = PP.parens $ PP.fcat [PP.text "\\",
                                                 PP.fsep (map (PP.text .varPp) (reverse (v:l))),
                                                 PP.text ".", pp' True True [] t]
 pp' True rm _ (l :@: r)                     = PP.fsep [pp' True False [] l, pp' False rm [] r]
@@ -196,8 +196,7 @@ parseTerm (Just l) = do
 parsePart :: Parser (LTerm VarString Untyped)
 parsePart = do
     PA.spaces
-    do
-        parens' (parseTerm Nothing)
+    parens' (parseTerm Nothing)
     PA.<|> do
         symbol' "\\"
         vl <- PA.many1 varParse
@@ -236,7 +235,7 @@ canonicalizeLambda' i env (LVar s) =
         Nothing -> error ("Lambda>>canonicalizeLambda: Not closed, found: " ++ s)
 canonicalizeLambda' i env (LAbst s t :@: r) =
     let (_i',_env',r') = canonicalizeLambda' (i+1) ((s,i):env) r
-    in (i,env,(LAbst (nameGen !! i) t :@: r'))
+    in (i, env, LAbst (nameGen !! i) t :@: r')
 canonicalizeLambda' i env (l :@: r) =
     let (i',env',l')   = canonicalizeLambda' i env l
         (i'',env'',r') = canonicalizeLambda' i' env' r
@@ -323,15 +322,15 @@ instance (Strategy s, ReductionContext c (LTerm VarString t), Show t, Ord t)
             => Reduction (LTerm VarString t) s c where
     reduceOnce' s zipper =
         case zipSelected zipper of
-            (((LAbst v _) :@: b) :@: c)
-                | LVar v == c  && not (elem v (freeVars b)) -> return (Just $ zipper {zipSelected = b})
+            ((LAbst v _ :@: b) :@: c)
+                | LVar v == c  && notElem v (freeVars b) -> return (Just $ zipper {zipSelected = b})
                                 --eta redex
                 | otherwise  -> return (Just $ zipper {zipSelected = subsititueAlpha v c b})
                                 --beta redex, may need alpha conversion
-            (LAbst x ty) :@: _t -> do
+            LAbst x ty :@: _t -> do
                 r <- reduceOnce' s (fromJust $ zipDownRight zipper)
                 case r of
-                    Just t' -> return (Just $ zipper {zipSelected = (LAbst x ty) :@: zipSelected t'})
+                    Just t' -> return (Just $ zipper {zipSelected = LAbst x ty :@: zipSelected t'})
                     Nothing -> return Nothing
             tl :@: tr -> do
                 r1 <- reduceOnce' s (fromJust $ zipDownLeft zipper)
@@ -342,8 +341,8 @@ instance (Strategy s, ReductionContext c (LTerm VarString t), Show t, Ord t)
                         case r2 of
                             Nothing -> return Nothing
                             Just tr' -> return (Just $ zipper {zipSelected = tl :@: zipSelected tr'})
-            (LVar _) -> return $ Nothing
-            (LAbst _ _) -> error $ "Lambda>>reduceOnce': Lonely Abstraction "
+            (LVar _) -> return Nothing
+            (LAbst _ _) -> error "Lambda>>reduceOnce': Lonely Abstraction "
 
 -----------------------------------------------------------------------------
 -- ** Convenience
@@ -363,8 +362,8 @@ toLambdaB t =
   where
     toLambdaB' :: [String] -> LTerm VarString t -> LTerm VarInt t
     toLambdaB' env (LVar str)           = case List.elemIndex str env of
-                                                    Just i -> (LVar i)
-                                                    Nothing -> error ""
+                                               Just i -> LVar i
+                                               Nothing -> error ""
     toLambdaB' env (LAbst str ty :@: t) = let newTerm = toLambdaB' (str:env) t
                                                 in LAbst str ty :@: newTerm
     toLambdaB' env (lt :@: rt)          = toLambdaB' env lt :@:
@@ -378,19 +377,17 @@ fromLambdaB = fromLambdaB' []
   where
     fromLambdaB' env (LVar ind)        = case env !!! ind of
                                             Just s -> LVar s
-                                            Nothing -> if ind < 0
-                                                            then LVar "grook"
-                                                            else LVar (nameGenFV !! (ind - length env))
+                                            Nothing -> LVar (if ind < 0 then "grook"
+                                                                else nameGenFV !! (ind - length env))
     fromLambdaB' env (LAbst str ty :@: t) =
-        if elem str env
+        if str `elem` env
             then let newName = findNewName str env (0:: Int)
                  in LAbst newName ty :@: fromLambdaB' (newName:env) t
             else LAbst str ty :@: fromLambdaB' (str:env) t
       where
         findNewName str env n =
-            if elem (str ++ show n) env
-                then findNewName str env (n+1)
-                else (str ++ show n)
+            if (str ++ show n) `elem` env then findNewName str env (n + 1) else
+               str ++ show n
     fromLambdaB' env (lt :@: rt)       = fromLambdaB' env lt :@: fromLambdaB' env rt
     fromLambdaB' _env (LAbst n _)        = error $ "Lambda>>toLambdaB': Lonely Abstraction " ++ show n
 
@@ -412,7 +409,7 @@ isFreeVar c (l :@: r)             = isFreeVar c l || isFreeVar c r
 isFreeVar _c (LAbst n _)          = error $ "Lambda>>isFreeVar: Lonely Abstraction " ++ show n
 
 termShift :: Int -> LTerm VarInt t -> LTerm VarInt t
-termShift d t = walk 0 t
+termShift d = walk 0
   where
     walk c (LVar i) | i >= c       = LVar (i+d)
                     | otherwise   = LVar i
@@ -423,7 +420,7 @@ termShift d t = walk 0 t
 -- | The substitution of a variable "var" with a term "replace" in the matched term
 --   Returns the resulting term.
 substituteb :: VarInt -> LTerm VarInt t -> LTerm VarInt t -> LTerm VarInt t
-substituteb var replace t = walk 0 t
+substituteb var replace = walk 0
   where
     walk c (LVar v) | v == var + c  = termShift c replace
                     | otherwise    = LVar v
@@ -437,17 +434,17 @@ substituteTop s t = termShift (-1) (substituteb 0 (termShift 1 s) t)
 instance (Strategy s, ReductionContext c (LTerm VarInt t))  => Reduction (LTerm VarInt t) s c where
     reduceOnce' s zipper =
         case zipSelected zipper of
-            (((LAbst _ _) :@: b) :@: c) ->
+            ((LAbst _ _ :@: b) :@: c) ->
                 case c of
                     LVar 0 | not (isFreeVar 0 b)
                         -> return (Just $ zipper {zipSelected = termShift (-1) b})
                             -- eta redex
                     _   -> return (Just $ zipper {zipSelected = substituteTop c b})
                             -- beta redex
-            (LAbst x ty) :@: _t -> do
+            LAbst x ty :@: _t -> do
                 r <- reduceOnce' s (fromJust $ zipDownRight zipper)
                 case r of
-                    Just t' -> return (Just $ zipper {zipSelected = (LAbst x ty) :@: zipSelected t'})
+                    Just t' -> return (Just $ zipper {zipSelected = LAbst x ty :@: zipSelected t'})
                     Nothing -> return Nothing
             tl :@: tr -> do
                 r1 <- reduceOnce' s (fromJust $ zipDownLeft zipper)
@@ -458,6 +455,6 @@ instance (Strategy s, ReductionContext c (LTerm VarInt t))  => Reduction (LTerm 
                         case r2 of
                             Nothing -> return Nothing
                             Just tr' -> return (Just $ zipper {zipSelected = tl :@: zipSelected tr'})
-            (LVar _) -> return $ Nothing
-            (LAbst _ _ ) -> error $ "Lambda>>reduceOnce': Lonely Abstraction "
+            (LVar _) -> return Nothing
+            (LAbst _ _ ) -> error "Lambda>>reduceOnce': Lonely Abstraction "
 

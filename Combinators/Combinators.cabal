@@ -12,7 +12,7 @@ synopsis: Combinatory logic workbench
 description: Combinatory logic and lambda calculus interpreter.
 author: Jürgen Nicklisch-Franken
 data-dir: ""
- 
+
 library
     build-depends: parallel >=3.2.0.3 && <3.3, base >=4, parsec -any,
                    pretty -any, QuickCheck -any, HUnit -any, test-framework -any,
@@ -37,7 +37,7 @@ library
                    Combinators.Properties
     ghc-prof-options: -auto-all -prof -caf-all
     ghc-options: -rtsopts -threaded -fexcess-precision -funbox-strict-fields -Wall -fno-warn-unused-do-bind -fno-warn-name-shadowing -O2
- 
+
 executable combinators
     build-depends: parallel >=3.2.0.3 && <3.3, base >=4, parsec -any,
                    pretty -any, QuickCheck -any, HUnit -any, test-framework -any,
@@ -61,7 +61,7 @@ executable combinators
                    Combinators.Properties
     ghc-prof-options: -auto-all -prof -caf-all
     ghc-options: -rtsopts -threaded -fexcess-precision -funbox-strict-fields -Wall -fno-warn-unused-do-bind -fno-warn-name-shadowing -O2
- 
+
 executable bench-combinators
     build-depends: parallel >=3.2.0.3 && <3.3, base -any, parsec -any,
                    pretty -any, QuickCheck -any, HUnit -any, test-framework -any,
@@ -86,7 +86,7 @@ executable bench-combinators
                    Combinators.Properties
     ghc-prof-options: -auto-all -prof -caf-all
     ghc-options: -rtsopts -threaded -fexcess-precision -funbox-strict-fields -Wall -fno-warn-unused-do-bind -fno-warn-name-shadowing -O3
- 
+
 test-suite test-combinators
     build-depends: parallel >=3.2.0.3 && <3.3, base -any, parsec -any,
                    pretty -any, QuickCheck -any, HUnit -any, test-framework -any,
